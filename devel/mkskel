@@ -1,0 +1,978 @@
+#!/bin/ksh
+
+# $Id: mkskel 2435 2008-04-30 04:31:07Z abel $
+
+# create a basic skeleton of a ksh, perl, C, or C++ program
+
+
+# Copyright (c) 1995-2005, Alexander L. Belikoff ( http://www.belikoff.net )
+# All rights reserved.
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above
+#       copyright notice, this list of conditions and the following
+#       disclaimer in the documentation and/or other materials
+#       provided with the distribution.
+#     * Neither the name of the <ORGANIZATION> nor the names of its
+#       contributors may be used to endorse or promote products
+#       derived from this software without specific prior written
+#       permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+
+prog=${0##*/}
+version=1.20		     # program version (RCS revision if unset)
+
+# figure out scratch directory
+
+if [[ -z $TMPDIR ]]; then
+    if [[ -d /usr/tmp ]]; then
+	export TMPDIR=/usr/tmp
+    else
+	export TMPDIR=/tmp
+    fi
+fi
+
+
+function usage {
+    print "
+    Usage:  $prog  [options]  <file(s)>
+
+$prog creates or adds a source code skeleton to the files specified.
+Unless mode is specified (see '-m' flag), $prog makes an attempt to
+guess the language mode from the filename.
+By default, $prog creates a new file with the skeleton and fails if the
+file already exists. To instrument an already existing file, use '-i' flag.
+
+$prog supports the following options:
+
+    -m <mode>                 - language mode:
+                                ksh          - ksh script
+                                perl         - perl script
+                                python       - python script
+                                c            - generic C file
+                                h            - generic C header file
+                                c++          - C++ file
+                                h++          - C++ header file
+                                cmain        - main driver for C program
+                                c++main      - main driver for C++ program
+
+    -i                        - instrument an already existing file
+
+    -s <arg>                  - output part of the template specified by <arg>
+                                to stdout.
+
+    -d                        - print debugging messages
+
+    -V                        - display program version
+
+    -h                        - display this message
+
+$prog is free software under the terms of the BSD License.
+"
+}
+
+
+function debug {
+    if [[ -n $do_debug ]]; then
+	print "DEBUG: " $@
+    fi
+}
+
+
+function error {
+    print -u2 "$prog: ERROR:" $@
+}
+
+
+function fatal {
+    error $@
+    exit 1
+}
+
+
+function verbose {
+    if [[ -n $do_verbose ]]; then
+	print $@
+    fi
+}
+
+
+function warning {
+    print -u2 "$prog: WARNING:" $@
+}
+
+
+# return user name (whoami doesn't work on prod. Suns)
+
+function whoiam {
+    typeset iam
+    iam=`id | sed 's/^uid=[0-9]*(\([^)]*\)).*/\1/g'`
+
+    if echo $iam | egrep '^[ 	]*$' > /dev/null ; then
+	print null-user
+    else
+	print $iam
+    fi
+}
+
+
+# expand macros in the input stream
+
+function macroexpand {
+    typeset file dir cppname ucppname
+
+    file="$1"
+    cppname=$(echo $file | sed 's/[\.\$ \+\-]/_/g')
+    ucppname=$(echo $cppname | tr '[a-z]' '[A-Z]')
+
+    sed -e "s|@@@filename@@@|$file|g" \
+	-e "s|@@@cppname@@@|$cppname|g" \
+	-e "s|@@@ucppname@@@|$ucppname|g"
+}
+
+
+# templates
+
+perl_template_pre='#!/usr/bin/perl -w
+
+# $''Header$
+
+#
+
+
+use strict;
+use Getopt::Long;
+use File::Basename;
+
+use constant EXIT_SUCCESS => 0;
+use constant EXIT_FAILURE => 1;
+
+my $prog = basename $0;
+my $version = undef;         # program version (RCS revision if undefined)
+
+
+# prototypes
+
+sub usage();
+sub warning(@);
+sub error(@);
+sub fatal(@);
+sub debug(@);
+sub verbose(@);
+
+
+# unbuffer the output
+
+my $oldfh = select(STDERR); $| = 1;
+select(STDOUT); $| = 1; select($oldfh);
+
+# parse options
+
+my %opts;
+Getopt::Long::Configure("require_order");
+Getopt::Long::Configure("no_ignore_case");
+unless (GetOptions(\%opts,
+		   "debug|d",
+		   "help|h|?",
+		   "verbose|v",
+		   "version|V")) {
+    usage();
+    exit EXIT_FAILURE;
+}
+
+if ($opts{help}) {
+    usage();
+    exit EXIT_SUCCESS;
+}
+
+my $do_verbose = $opts{verbose};
+my $do_debug = $opts{debug};
+
+if ($opts{version}) {
+    unless ($version) {
+	$version = q/$''Revision: 0.0 $/;
+	$version =~ s/\$.evision:\s*(\S*)\s*\$$/$1/;
+    }
+
+    print "$prog $version\\n";
+    exit EXIT_SUCCESS;
+}
+
+unless (@ARGV == 1) {
+    usage();
+    exit EXIT_FAILURE;
+}
+
+my @lt = localtime();
+my $dtag = ($lt[5] + 1900) . ($lt[4] + 1) . "$lt[3]-$lt[2]$lt[1]$lt[0]";
+my $TMPDIR = $ENV{TMPDIR} || (-d "/usr/tmp" ? "/usr/tmp" : "/tmp");
+
+
+'
+
+perl_template_post='
+
+exit EXIT_SUCCESS;
+
+
+sub warning(@)
+{
+    print STDERR "$prog: WARNING: @_\\n";
+}
+
+
+sub error(@)
+{
+    print STDERR "$prog: ERROR: @_\\n";
+}
+
+
+sub fatal(@)
+{
+    error "@_";
+    exit EXIT_FAILURE;
+}
+
+
+sub debug(@)
+{
+    print "DEBUG: " . (caller(0))[0] . ":" . (caller(0))[2] . ": @_\\n"
+	if $do_debug;
+}
+
+
+sub verbose(@)
+{
+    print "@_\\n" if $do_verbose;
+}
+
+
+sub usage()
+{
+    print "
+Usage:    $prog  [options]
+
+$prog
+
+
+$prog supports the following options:
+
+    --verbose, -v          - verbose mode
+    --debug, -d            - debug mode
+    --version, -V          - display program version
+    --help, -h             - show this help screen
+
+";
+}
+
+'
+
+ksh_template_pre='#!/bin/ksh
+
+# $''Header$
+
+# 
+
+
+prog=${0##*/}
+unset version                        # program version (RCS revision if unset)
+
+
+# figure out scratch directory
+
+if [[ -z $TMPDIR ]]; then
+    if [[ -d /usr/tmp ]]; then
+	export TMPDIR=/usr/tmp
+    else
+	export TMPDIR=/tmp
+    fi
+fi
+
+
+function usage {
+    print "
+    Usage:  $prog  [options]
+
+$prog
+
+
+$prog supports the following options:
+
+    -m <dest>                 - mail output to <dest>
+
+    -v                        - verbose operation
+    -d                        - debug mode
+    -V                        - display program version
+    -h                        - display this message
+
+"
+}
+
+
+function debug {
+    [[ -n $do_debug ]] && print "DEBUG: " $@
+}
+
+
+function verbose {
+    [[ -n $do_verbose ]] && print $@
+}
+
+
+function error {
+    print -u2 "$prog: ERROR:" $@
+}
+
+
+function fatal {
+    error $@
+    exit 1
+}
+
+
+function warning {
+    print -u2 "$prog: WARNING:" $@
+}
+
+
+# return user name (whoami doesn'"'"'t work on prod. Suns)
+
+function whoiam {
+    typeset iam
+
+    iam=`id | sed '"'"'s/^uid=[0-9]*(\([^)]*\)).*/\1/g'"'"'`
+
+    if echo $iam | egrep '"'"'^[ 	]*$'"'"' > /dev/null ; then
+	print null-user
+    else
+	print $iam
+    fi
+
+    unset iam
+}
+
+
+# parse options
+
+unset do_debug do_verbose dest
+
+while getopts ":dhm:Vv" opt ; do
+    case $opt in
+	d) do_debug=1
+	   ;;
+
+	h) usage
+	   exit 0 
+	   ;;
+
+	m) dest="$OPTARG" 
+	   ;;
+
+	V) if [[ -z $version ]]; then
+	       if [[ '"'"'$''Revision$'"'"' = "\$R""evision\$" ]]; then
+	           version=$(echo '"'"'$''Rev: 0.0 $'"'"'  | \
+				sed "s/^\$""Rev: *\(.*\) *\$$/\1/")
+	       else
+	           version=$(echo '"'"'$''Revision: 0.0 $'"'"'  | \
+				sed "s/^\$""Revision: *\(.*\) *\$$/\1/")
+	       fi
+	   fi
+
+	   print "$prog $version"
+	   exit 0
+	   ;;
+
+	v) do_verbose=1
+	   ;;
+
+	:) fatal "option '"'"'-$OPTARG'"'"' requires an argument"
+ 	   ;;
+
+	\?) error "unknown option: '"'"'-$OPTARG'"'"'"
+            usage
+	    exit 1
+	    ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+dtag="`date +%Y%m%d-%H%M%S`"
+
+
+# capture the output to be sent out
+
+if [[ -n $dest ]]; then
+    log_tmp_file="$TMPDIR/$prog.out-tmp.$dtag.$$.$PPID.log"
+
+    rm -f $log_tmp_file || {
+	fatal "cannot remove a tmp log file '"'"'$log_tmp_file'"'"'"
+    }
+
+    exec > $log_tmp_file
+    exec 2>&1
+
+    trap '"'"'
+        if [[ -s $log_tmp_file ]]; then
+	    if [[ -z $log_subject ]]; then
+		log_subject="`basename $0`: `hostname` `date`"
+	    fi
+
+	    mail -s "$log_subject" $dest < $log_tmp_file && \
+	    rm -f $log_tmp_file
+	else
+	    rm -f $log_tmp_file
+	fi
+    '"'"' INT QUIT TERM EXIT
+fi
+
+if [[ $# -ne 1 ]]; then
+    usage
+    exit 1
+fi
+
+
+'
+
+ksh_template_post='
+'
+
+c_template_pre='/** @file @@@filename@@@ */
+
+#ifndef lint
+static const char RCSid[] = "$''Header$";
+#endif
+
+
+'
+
+c_template_post='
+'
+
+h_template_pre='/** @file @@@filename@@@ */
+
+#ifndef INCLUDED_@@@ucppname@@@
+#define INCLUDED_@@@ucppname@@@
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef lint
+static const char @@@cppname@@@_RCSid[] = "$''Header$";
+#endif
+'
+
+h_template_post='
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* INCLUDED_@@@ucppname@@@ */
+'
+
+cpp_template_pre='/// @file @@@filename@@@
+
+#ifndef lint
+static const char RCSid[] = "$''Header$";
+#endif
+
+
+'
+
+cpp_template_post='
+'
+
+hpp_template_pre='/// @file @@@filename@@@
+
+#ifndef INCLUDED_@@@ucppname@@@
+#define INCLUDED_@@@ucppname@@@
+
+#ifndef lint
+static const char @@@cppname@@@_RCSid[] = "$''Header$";
+#endif
+'
+
+hpp_template_post='
+
+#endif // INCLUDED_@@@ucppname@@@
+'
+
+cmain_template_pre='/** @file @@@filename@@@
+ *
+ * 
+ */
+
+#ifndef lint
+static char RCSid[] = "$Header$";
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+/* #include "app_version.h" */
+
+
+static char program_name[128] = ""; /* program name */
+static int verbose_mode = 0;
+
+
+static void
+usage(void)
+{
+    fprintf(stderr, "Usage:  %s  [options]  <arg>\\n\\n"
+	   "  -V            show version\\n"
+	   "  -v            verbose mode\\n"
+	   "  -h            show this screen\\n",
+	   program_name);
+}
+
+
+int
+main(int argc, char* argv[])
+{
+    char options[] = "hVv";
+    int oc;
+    char* p;
+
+#ifndef __DGUX__
+    extern char* optarg;	/* for getopt(3) */
+    extern int optind, opterr, optopt;
+#endif
+
+    p = strrchr(argv[0], '"'"'/'"'"');
+    strncpy(program_name, ((p == NULL) ? argv[0] : p + 1),
+	    sizeof(program_name));
+    program_name[sizeof(program_name) - 1] = '"'"'\\0'"'"';
+
+
+    /* parse the command line */
+
+    while ((oc = getopt(argc, argv, options)) != EOF) {
+	switch (oc) {
+	case '"'"'h'"'"':		/* help message */
+	    usage();
+	    exit(EXIT_SUCCESS);
+
+	case '"'"'V'"'"':		/* version number */
+	    /* printf("%s version %s (build %d)\\n\\n"
+		   "Built by %s in %s:%s on %s\\n",
+		   program_name, APP_VERSION_STRING, APP_VERSION_BUILD,
+		   APP_BUILDER, APP_BUILD_HOST, APP_BUILD_PATH,
+		   APP_BUILD_TIME); */
+	    exit(EXIT_SUCCESS);
+
+	case '"'"'v'"'"':		/* verbose mode */
+	    verbose_mode = 1;
+	    break;
+
+	case '"'"'?'"'"':
+	default:
+	    usage();
+	    exit(EXIT_FAILURE);
+	}
+    }
+
+    if (optind != argc - 1) {
+	usage();
+	exit(EXIT_FAILURE);
+    }
+'
+
+cmain_template_post='
+    exit(EXIT_SUCCESS);
+}
+'
+
+cppmain_template_pre='/// @file @@@filename@@@
+
+#ifndef lint
+static const char RCSid[] = "$Header$";
+#endif
+
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <cstdio>
+#include <cstdlib>
+#include <unistd.h>
+#include <cstring>
+
+#include "app_version.h"
+
+
+using namespace std;
+
+
+static string program_name;	// program name
+static bool verbose_mode = false;
+
+
+static void
+usage()
+{
+    cout << "\\nUsage:  " << program_name << "  [options]  <arg>\\n\\n"
+//	 << "  -d <num>      set debug level\\n"
+	 << "  -V            show version\\n"
+	 << "  -v            verbose mode\\n"
+	 << "  -h            show this screen\\n";
+}
+
+
+int
+main(int argc, char* argv[])
+{
+    int oc;
+    char options[] = "hVv";
+    char* p;
+
+#ifndef __DGUX__
+    extern char* optarg;	// for getopt(3)
+#endif
+
+    p = strrchr(argv[0], '"'"'/'"'"');
+    program_name = (p == NULL) ? argv[0] : p + 1;
+
+
+    // parse the command line
+    
+    while ((oc = getopt(argc, argv, options)) != EOF) {
+	switch (oc) {
+#if 0
+	case '"'"'d'"'"':.
+	    {
+		istringstream is(optarg);
+                int val;
+
+		if (!(is >> val) || val <= 0) {
+		    cerr << program_name << ": ERROR: bad value: '"'"'" 
+                         << optarg << "'"'"'\\n"
+		    exit(EXIT_FAILURE);
+		}
+	    }
+
+	    break;
+#endif
+
+	case '"'"'h'"'"':		// help screen
+	    usage();
+	    exit(EXIT_SUCCESS);
+
+	case '"'"'V'"'"':		// version number
+	    cout << program_name << " version "
+		 << APP_VERSION_STRING
+		 << " (build " << APP_VERSION_BUILD << ")\\n\\n"
+		 << "Built by " << APP_BUILDER
+		 << " in " << APP_BUILD_HOST << '"'"':'"'"' << APP_BUILD_PATH
+		 << " on " << APP_BUILD_TIME << endl << endl;
+	    exit(EXIT_SUCCESS);
+
+	case '"'"'v'"'"':		// verbose mode
+	    verbose_mode = true;
+	    break;
+
+	case '"'"'?'"'"':
+	default:
+	    usage();
+	    exit(EXIT_FAILURE);
+	}
+    }
+
+    if (optind != argc - 1) {
+	usage();
+	exit(EXIT_FAILURE);
+    }
+
+'
+
+cppmain_template_post='
+    exit(EXIT_SUCCESS);
+}
+'
+
+
+python_template_pre='#!/usr/bin/env python
+
+# $''Header$
+
+
+import re
+import os
+import os.path
+import logging
+import sys
+from optparse import OptionParser
+
+
+def redirect_output(file):
+    f = os.open(options.log_file, 1, 0644)
+    os.close(1)
+
+    if os.dup(f) != 1:
+        sys.stderr.write("ERROR: failed to dup STDOUT\\n")
+
+    os.close(2)
+
+    if os.dup(f) != 2:
+        sys.stderr.write("ERROR: failed to dup STDERR\\n")
+
+
+
+usage_string = """Usage:  %prog [options] <arg>
+
+
+%prog <INSERT DESCRIPTION HERE>
+
+"""
+
+
+prog = os.path.basename(sys.argv[0])
+program_version = None          # default: use RCS ID
+
+if not(program_version):
+    program_version = "$Revision: 1.1$"
+    program_version = re.sub("\$.evision:\s*(\S*)\s*\$$", "\g<1>",
+                             program_version)
+
+version_string = "%%prog  %s" % program_version
+
+logging.basicConfig(format = "%(asctime)s  " + prog + 
+                    ": %(levelname)s: %(message)s")
+
+
+# parse command-line options
+
+parser = OptionParser(usage = usage_string,
+                      version = version_string)
+parser.add_option("-l", "--log",
+                  help = "redirect output to a log file",
+                  metavar = "FILE", dest = "log_file")
+parser.add_option("-v", "--verbose", help = "verbose operation",
+                  action = "store_false", dest = "verbose_mode")
+parser.add_option("--debug", help = "debug mode", 
+                  action = "store_false", dest = "debug_mode")
+
+(options, args) = parser.parse_args()
+
+if len(args) != 1 :
+    parser.print_help()
+    sys.exit()
+
+
+# redirect output
+
+if options.log_file :
+    redirect_output(options.log_file)
+
+'
+
+python_template_post='
+sys.exit()
+'
+
+
+
+
+###
+### MAIN
+###
+
+# parse options
+
+unset do_debug do_verbose instrument mode show_part
+
+while getopts ":dhim:s:Vv" opt ; do
+    case $opt in
+	d) do_debug=1
+	   ;;
+
+	h) usage
+	   exit 0 
+	   ;;
+
+	i) instrument=1
+	   ;;
+
+	m) mode="$OPTARG" 
+	   ;;
+
+	s) show_part="$OPTARG" 
+	   ;;
+
+	V) if [[ -z $version ]]; then
+	    if [[ '$Revision: 2435 $' = "\$R""evision\$" ]]; then
+		version=$(echo '$Rev: 2435 $'  | \
+		          sed "s/^\$""Rev: *\(.*\) *\$$/\1/")
+	    else
+		version=$(echo '$Revision: 2435 $'  | \
+		          sed "s/^\$""Revision: *\(.*\) *\$$/\1/")
+	    fi
+	   fi
+
+	   print "$prog $version"
+	   exit 0
+	   ;;
+
+	v) do_verbose=1
+	   ;;
+
+	:) fatal "option '-$OPTARG' requires an argument"
+ 	   ;;
+
+	\?) fatal "unknown option: '-$OPTARG'"
+	    usage
+	    exit 1
+	    ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+if [[ $# -lt 1 ]]; then
+    usage
+    exit 1
+fi
+
+if [[ -n $instrument && -n $show_part ]]; then
+    fatal "either '-i' or '-s' should be specified"
+fi
+
+if [[ -n $show_part && $show_part != "pre" && $show_part != "post" ]]; then
+    fatal "bad argument for '-s' ($show_part). Must be 'pre' or 'post'"
+fi
+
+dtag="`date +%Y%m%d-%H%M%S`"
+forced_mode=$mode
+
+for file in "$@"; do
+
+    # select templates
+
+    mode=$forced_mode
+
+    if [[ -z $mode ]]; then
+	suff=${file##*.}
+
+	case $suff in
+	    pl) mode=perl;;
+	    py) mode=python;;
+	    c) mode=c;;
+	    h) mode=h;;
+	    C|cc|cpp|cxx|c++) mode=c++;;
+	    H|hh|hpp|hxx|h++) mode=h++;;
+	    sh|ksh) mode=ksh;;
+	    *) fatal "cannot deduct language from filename '$file'";;
+	esac
+    fi
+
+    unset is_executable
+
+    case $mode in
+	perl) pre="$perl_template_pre"
+	      post="$perl_template_post"
+	      is_executable=1
+	      ;;
+
+	python) pre="$python_template_pre"
+	      post="$python_template_post"
+	      is_executable=1
+	      ;;
+
+        c) pre="$c_template_pre"
+	   post="$c_template_post"
+	   ;;
+
+        h) pre="$h_template_pre"
+	   post="$h_template_post"
+	   ;;
+
+        c++) pre="$cpp_template_pre"
+	     post="$cpp_template_post"
+	  ;;
+
+        h++) pre="$hpp_template_pre"
+	     post="$hpp_template_post"
+	     ;;
+
+        ksh) pre="$ksh_template_pre"
+	     post="$ksh_template_post"
+	     is_executable=1
+	     ;;
+ 
+        cmain) pre="$cmain_template_pre"
+	       post="$cmain_template_post"
+	       ;;
+
+        c++main) pre="$cppmain_template_pre"
+	         post="$cppmain_template_post"
+	         ;;
+
+        *)  fatal "bad mode: '$mode'"
+	    ;;
+    esac
+
+
+    if [[ -n $instrument ]]; then
+	if [[ ! -a $file ]]; then
+	    fatal "file '$file' does not exist"
+	fi
+
+	if [[ -L $file ]]; then
+	    fatal "file '$file' is a symlink"
+	fi
+
+	tmpf=$TMPDIR/mkskel.fcp-tmp.$dtag.$$.$PPID
+	rm -f $tmpf
+	mv $file $tmpf && \
+	    print "$pre" | macroexpand "$file" > $file && \
+	    cat $tmpf >> $file && \
+	    print "$post" | macroexpand "$file" >> $file || \
+	    exit 1
+
+	rm -f $tmpf
+	exit 0
+
+    elif [[ $show_part = "pre" ]]; then
+	print "$pre" | macroexpand "$file" && exit 0
+	exit 1
+    
+    elif [[ $show_part = "post" ]]; then
+	print "$post" | macroexpand "$file" && exit 0
+	exit 1
+    fi
+    
+    if [[ -a $file ]]; then
+	fatal "file '$file' already exists"
+    fi
+
+    print "$pre" | macroexpand "$file" > $file && \
+	print "<<< insert your code here >>>\n\n" >> $file && \
+	print "$post" | macroexpand "$file" >> $file || \
+	exit 1
+
+    if [[ -n $is_executable ]]; then
+	chmod 755 $file
+    fi
+done
+
+exit 0
