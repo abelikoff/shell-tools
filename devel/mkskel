@@ -697,10 +697,7 @@ parser.add_option("-m", "--mode",
 
 (options, args) = parser.parse_args()
 
-if options.verbose_mode:
-    logging.getLogger().setLevel(logging.DEBUG)
-else:
-    logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.INFO)
 
 if len(args) != 1 :
     parser.print_help()
