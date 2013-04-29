@@ -620,7 +620,9 @@ parser.add_option("--debug", help = "debug mode",
 (options, args) = parser.parse_args()
 
 if options.verbose_mode:
-    logging.getLogger().setLevel(Level.DEBUG)
+    logging.getLogger().setLevel(logging.DEBUG)
+else:
+    logging.getLogger().setLevel(logging.INFO)
 
 if len(args) != 1 :
     parser.print_help()
@@ -694,6 +696,11 @@ parser.add_option("-m", "--mode",
                   metavar = "MODE", dest = "mode")
 
 (options, args) = parser.parse_args()
+
+if options.verbose_mode:
+    logging.getLogger().setLevel(logging.DEBUG)
+else:
+    logging.getLogger().setLevel(logging.INFO)
 
 if len(args) != 1 :
     parser.print_help()
