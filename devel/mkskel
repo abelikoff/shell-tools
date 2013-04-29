@@ -1,11 +1,9 @@
-#!/bin/ksh
-
-# $Id: mkskel 2435 2008-04-30 04:31:07Z abel $
+#!/usr/bin/env python
 
 # create a basic skeleton of a ksh, perl, C, or C++ program
 
 
-# Copyright (c) 1995-2005, Alexander L. Belikoff ( http://www.belikoff.net )
+# Copyright (c) 1995-2013, Alexander L. Belikoff ( http://belikoff.net )
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -36,123 +34,20 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 
-prog=${0##*/}
-version=1.20		     # program version (RCS revision if unset)
-
-# figure out scratch directory
-
-if [[ -z $TMPDIR ]]; then
-    if [[ -d /usr/tmp ]]; then
-	export TMPDIR=/usr/tmp
-    else
-	export TMPDIR=/tmp
-    fi
-fi
+import re
+import os
+import os.path
+import logging
+import sys
+from optparse import OptionParser
 
 
-function usage {
-    print "
-    Usage:  $prog  [options]  <file(s)>
-
-$prog creates or adds a source code skeleton to the files specified.
-Unless mode is specified (see '-m' flag), $prog makes an attempt to
-guess the language mode from the filename.
-By default, $prog creates a new file with the skeleton and fails if the
-file already exists. To instrument an already existing file, use '-i' flag.
-
-$prog supports the following options:
-
-    -m <mode>                 - language mode:
-                                ksh          - ksh script
-                                perl         - perl script
-                                python       - python script
-                                c            - generic C file
-                                h            - generic C header file
-                                c++          - C++ file
-                                h++          - C++ header file
-                                cmain        - main driver for C program
-                                c++main      - main driver for C++ program
-
-    -i                        - instrument an already existing file
-
-    -s <arg>                  - output part of the template specified by <arg>
-                                to stdout.
-
-    -d                        - print debugging messages
-
-    -V                        - display program version
-
-    -h                        - display this message
-
-$prog is free software under the terms of the BSD License.
-"
-}
-
-
-function debug {
-    if [[ -n $do_debug ]]; then
-	print "DEBUG: " $@
-    fi
-}
-
-
-function error {
-    print -u2 "$prog: ERROR:" $@
-}
-
-
-function fatal {
-    error $@
-    exit 1
-}
-
-
-function verbose {
-    if [[ -n $do_verbose ]]; then
-	print $@
-    fi
-}
-
-
-function warning {
-    print -u2 "$prog: WARNING:" $@
-}
-
-
-# return user name (whoami doesn't work on prod. Suns)
-
-function whoiam {
-    typeset iam
-    iam=`id | sed 's/^uid=[0-9]*(\([^)]*\)).*/\1/g'`
-
-    if echo $iam | egrep '^[ 	]*$' > /dev/null ; then
-	print null-user
-    else
-	print $iam
-    fi
-}
-
-
-# expand macros in the input stream
-
-function macroexpand {
-    typeset file dir cppname ucppname
-
-    file="$1"
-    cppname=$(echo $file | sed 's/[\.\$ \+\-]/_/g')
-    ucppname=$(echo $cppname | tr '[a-z]' '[A-Z]')
-
-    sed -e "s|@@@filename@@@|$file|g" \
-	-e "s|@@@cppname@@@|$cppname|g" \
-	-e "s|@@@ucppname@@@|$ucppname|g"
-}
-
+pre_templates = {}
+post_templates = {}
 
 # templates
 
-perl_template_pre='#!/usr/bin/perl -w
-
-# $''Header$
+pre_templates['perl'] = """#!/usr/bin/perl -w
 
 #
 
@@ -207,7 +102,7 @@ my $do_debug = $opts{debug};
 
 if ($opts{version}) {
     unless ($version) {
-	$version = q/$''Revision: 0.0 $/;
+	$version = q/$""" + """Revision: 0.0 $/;
 	$version =~ s/\$.evision:\s*(\S*)\s*\$$/$1/;
     }
 
@@ -225,9 +120,9 @@ my $dtag = ($lt[5] + 1900) . ($lt[4] + 1) . "$lt[3]-$lt[2]$lt[1]$lt[0]";
 my $TMPDIR = $ENV{TMPDIR} || (-d "/usr/tmp" ? "/usr/tmp" : "/tmp");
 
 
-'
+"""
 
-perl_template_post='
+post_templates['perl'] = """
 
 exit EXIT_SUCCESS;
 
@@ -282,11 +177,9 @@ $prog supports the following options:
 ";
 }
 
-'
+"""
 
-ksh_template_pre='#!/bin/ksh
-
-# $''Header$
+pre_templates['ksh'] = """#!/bin/ksh
 
 # 
 
@@ -352,28 +245,11 @@ function warning {
 }
 
 
-# return user name (whoami doesn'"'"'t work on prod. Suns)
-
-function whoiam {
-    typeset iam
-
-    iam=`id | sed '"'"'s/^uid=[0-9]*(\([^)]*\)).*/\1/g'"'"'`
-
-    if echo $iam | egrep '"'"'^[ 	]*$'"'"' > /dev/null ; then
-	print null-user
-    else
-	print $iam
-    fi
-
-    unset iam
-}
-
-
 # parse options
 
-unset do_debug do_verbose dest
+unset do_debug do_verbose
 
-while getopts ":dhm:Vv" opt ; do
+while getopts ":dhVv" opt ; do
     case $opt in
 	d) do_debug=1
 	   ;;
@@ -382,15 +258,12 @@ while getopts ":dhm:Vv" opt ; do
 	   exit 0 
 	   ;;
 
-	m) dest="$OPTARG" 
-	   ;;
-
 	V) if [[ -z $version ]]; then
-	       if [[ '"'"'$''Revision$'"'"' = "\$R""evision\$" ]]; then
-	           version=$(echo '"'"'$''Rev: 0.0 $'"'"'  | \
+	       if [[ '$""" + """Revision$' = "\$R""evision\$" ]]; then
+	           version=$(echo '$""" + """Rev: 0.0 $'  | \
 				sed "s/^\$""Rev: *\(.*\) *\$$/\1/")
 	       else
-	           version=$(echo '"'"'$''Revision: 0.0 $'"'"'  | \
+	           version=$(echo '$""" + """Revision: 0.0 $'  | \
 				sed "s/^\$""Revision: *\(.*\) *\$$/\1/")
 	       fi
 	   fi
@@ -402,10 +275,10 @@ while getopts ":dhm:Vv" opt ; do
 	v) do_verbose=1
 	   ;;
 
-	:) fatal "option '"'"'-$OPTARG'"'"' requires an argument"
+	:) fatal "option '-$OPTARG' requires an argument"
  	   ;;
 
-	\?) error "unknown option: '"'"'-$OPTARG'"'"'"
+	\?) error "unknown option: '-$OPTARG'"
             usage
 	    exit 1
 	    ;;
@@ -417,56 +290,29 @@ shift $((OPTIND-1))
 dtag="`date +%Y%m%d-%H%M%S`"
 
 
-# capture the output to be sent out
-
-if [[ -n $dest ]]; then
-    log_tmp_file="$TMPDIR/$prog.out-tmp.$dtag.$$.$PPID.log"
-
-    rm -f $log_tmp_file || {
-	fatal "cannot remove a tmp log file '"'"'$log_tmp_file'"'"'"
-    }
-
-    exec > $log_tmp_file
-    exec 2>&1
-
-    trap '"'"'
-        if [[ -s $log_tmp_file ]]; then
-	    if [[ -z $log_subject ]]; then
-		log_subject="`basename $0`: `hostname` `date`"
-	    fi
-
-	    mail -s "$log_subject" $dest < $log_tmp_file && \
-	    rm -f $log_tmp_file
-	else
-	    rm -f $log_tmp_file
-	fi
-    '"'"' INT QUIT TERM EXIT
-fi
-
 if [[ $# -ne 1 ]]; then
     usage
     exit 1
 fi
 
 
-'
+"""
 
-ksh_template_post='
-'
+post_templates['ksh'] = "\n"
 
-c_template_pre='/** @file @@@filename@@@ */
+
+pre_templates['c'] = """/** @file @@@filename@@@ */
 
 #ifndef lint
-static const char RCSid[] = "$''Header$";
+static const char RCSid[] = "$""" + """Id$";
 #endif
 
 
-'
+"""
 
-c_template_post='
-'
+post_templates['c'] = "\n"
 
-h_template_pre='/** @file @@@filename@@@ */
+pre_templates['h'] = """/** @file @@@filename@@@ */
 
 #ifndef INCLUDED_@@@ucppname@@@
 #define INCLUDED_@@@ucppname@@@
@@ -476,47 +322,46 @@ extern "C" {
 #endif
 
 #ifndef lint
-static const char @@@cppname@@@_RCSid[] = "$''Header$";
+static const char @@@cppname@@@_RCSid[] = "$""" + """Id$";
 #endif
-'
+"""
 
-h_template_post='
+post_templates['h'] = """
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* INCLUDED_@@@ucppname@@@ */
-'
+"""
 
-cpp_template_pre='/// @file @@@filename@@@
+pre_templates['c++'] = """/// @file @@@filename@@@
 
 #ifndef lint
-static const char RCSid[] = "$''Header$";
+static const char RCSid[] = "$""" + """Header$";
 #endif
 
 
-'
+"""
 
-cpp_template_post='
-'
+post_templates['c++'] = "\n"
 
-hpp_template_pre='/// @file @@@filename@@@
+pre_templates['h++'] = """/// @file @@@filename@@@
 
 #ifndef INCLUDED_@@@ucppname@@@
 #define INCLUDED_@@@ucppname@@@
 
 #ifndef lint
-static const char @@@cppname@@@_RCSid[] = "$''Header$";
+static const char @@@cppname@@@_RCSid[] = "$""" + """Header$";
 #endif
-'
+"""
 
-hpp_template_post='
+post_templates['h++'] = """
 
 #endif // INCLUDED_@@@ucppname@@@
-'
+"""
 
-cmain_template_pre='/** @file @@@filename@@@
+pre_templates['cmain'] = """/** @file @@@filename@@@
  *
  * 
  */
@@ -560,21 +405,21 @@ main(int argc, char* argv[])
     extern int optind, opterr, optopt;
 #endif
 
-    p = strrchr(argv[0], '"'"'/'"'"');
+    p = strrchr(argv[0], '/');
     strncpy(program_name, ((p == NULL) ? argv[0] : p + 1),
 	    sizeof(program_name));
-    program_name[sizeof(program_name) - 1] = '"'"'\\0'"'"';
+    program_name[sizeof(program_name) - 1] = '\\0';
 
 
     /* parse the command line */
 
     while ((oc = getopt(argc, argv, options)) != EOF) {
 	switch (oc) {
-	case '"'"'h'"'"':		/* help message */
+	case 'h':		/* help message */
 	    usage();
 	    exit(EXIT_SUCCESS);
 
-	case '"'"'V'"'"':		/* version number */
+	case 'V':		/* version number */
 	    /* printf("%s version %s (build %d)\\n\\n"
 		   "Built by %s in %s:%s on %s\\n",
 		   program_name, APP_VERSION_STRING, APP_VERSION_BUILD,
@@ -582,11 +427,11 @@ main(int argc, char* argv[])
 		   APP_BUILD_TIME); */
 	    exit(EXIT_SUCCESS);
 
-	case '"'"'v'"'"':		/* verbose mode */
+	case 'v':		/* verbose mode */
 	    verbose_mode = 1;
 	    break;
 
-	case '"'"'?'"'"':
+	case '?':
 	default:
 	    usage();
 	    exit(EXIT_FAILURE);
@@ -597,17 +442,17 @@ main(int argc, char* argv[])
 	usage();
 	exit(EXIT_FAILURE);
     }
-'
+"""
 
-cmain_template_post='
+post_templates['cmain'] = """
     exit(EXIT_SUCCESS);
 }
-'
+"""
 
-cppmain_template_pre='/// @file @@@filename@@@
+pre_templates['c++main'] = """/// @file @@@filename@@@
 
 #ifndef lint
-static const char RCSid[] = "$Header$";
+static const char RCSid[] = "$""" + """Id$";
 #endif
 
 #include <iostream>
@@ -650,7 +495,7 @@ main(int argc, char* argv[])
     extern char* optarg;	// for getopt(3)
 #endif
 
-    p = strrchr(argv[0], '"'"'/'"'"');
+    p = strrchr(argv[0], '/');
     program_name = (p == NULL) ? argv[0] : p + 1;
 
 
@@ -659,14 +504,14 @@ main(int argc, char* argv[])
     while ((oc = getopt(argc, argv, options)) != EOF) {
 	switch (oc) {
 #if 0
-	case '"'"'d'"'"':.
+	case 'd':.
 	    {
 		istringstream is(optarg);
                 int val;
 
 		if (!(is >> val) || val <= 0) {
-		    cerr << program_name << ": ERROR: bad value: '"'"'" 
-                         << optarg << "'"'"'\\n"
+		    cerr << program_name << ": ERROR: bad value: '" 
+                         << optarg << "'\\n"
 		    exit(EXIT_FAILURE);
 		}
 	    }
@@ -674,24 +519,24 @@ main(int argc, char* argv[])
 	    break;
 #endif
 
-	case '"'"'h'"'"':		// help screen
+	case 'h':		// help screen
 	    usage();
 	    exit(EXIT_SUCCESS);
 
-	case '"'"'V'"'"':		// version number
+	case 'V':		// version number
 	    cout << program_name << " version "
 		 << APP_VERSION_STRING
 		 << " (build " << APP_VERSION_BUILD << ")\\n\\n"
 		 << "Built by " << APP_BUILDER
-		 << " in " << APP_BUILD_HOST << '"'"':'"'"' << APP_BUILD_PATH
+		 << " in " << APP_BUILD_HOST << ':' << APP_BUILD_PATH
 		 << " on " << APP_BUILD_TIME << endl << endl;
 	    exit(EXIT_SUCCESS);
 
-	case '"'"'v'"'"':		// verbose mode
+	case 'v':		// verbose mode
 	    verbose_mode = true;
 	    break;
 
-	case '"'"'?'"'"':
+	case '?':
 	default:
 	    usage();
 	    exit(EXIT_FAILURE);
@@ -703,17 +548,17 @@ main(int argc, char* argv[])
 	exit(EXIT_FAILURE);
     }
 
-'
+"""
 
-cppmain_template_post='
+post_templates['c++main'] = """
     exit(EXIT_SUCCESS);
 }
-'
+"""
 
 
-python_template_pre='#!/usr/bin/env python
+pre_templates['python'] = """#!/usr/bin/env python
 
-# $''Header$
+# 
 
 
 import re
@@ -738,12 +583,12 @@ def redirect_output(file):
 
 
 
-usage_string = """Usage:  %prog [options] <arg>
+usage_string = \"\""Usage:  %prog [options] <arg>
 
 
 %prog <INSERT DESCRIPTION HERE>
 
-"""
+\"\""
 
 
 prog = os.path.basename(sys.argv[0])
@@ -768,11 +613,14 @@ parser.add_option("-l", "--log",
                   help = "redirect output to a log file",
                   metavar = "FILE", dest = "log_file")
 parser.add_option("-v", "--verbose", help = "verbose operation",
-                  action = "store_false", dest = "verbose_mode")
+                  action = "store_true", dest = "verbose_mode")
 parser.add_option("--debug", help = "debug mode", 
                   action = "store_false", dest = "debug_mode")
 
 (options, args) = parser.parse_args()
+
+if options.verbose_mode:
+    logging.getLogger().setLevel(Level.DEBUG)
 
 if len(args) != 1 :
     parser.print_help()
@@ -784,195 +632,143 @@ if len(args) != 1 :
 if options.log_file :
     redirect_output(options.log_file)
 
-'
+"""
 
-python_template_post='
+post_templates['python'] = """
 sys.exit()
-'
+"""
 
 
 
-
-###
-### MAIN
-###
-
-# parse options
-
-unset do_debug do_verbose instrument mode show_part
-
-while getopts ":dhim:s:Vv" opt ; do
-    case $opt in
-	d) do_debug=1
-	   ;;
-
-	h) usage
-	   exit 0 
-	   ;;
-
-	i) instrument=1
-	   ;;
-
-	m) mode="$OPTARG" 
-	   ;;
-
-	s) show_part="$OPTARG" 
-	   ;;
-
-	V) if [[ -z $version ]]; then
-	    if [[ '$Revision: 2435 $' = "\$R""evision\$" ]]; then
-		version=$(echo '$Rev: 2435 $'  | \
-		          sed "s/^\$""Rev: *\(.*\) *\$$/\1/")
-	    else
-		version=$(echo '$Revision: 2435 $'  | \
-		          sed "s/^\$""Revision: *\(.*\) *\$$/\1/")
-	    fi
-	   fi
-
-	   print "$prog $version"
-	   exit 0
-	   ;;
-
-	v) do_verbose=1
-	   ;;
-
-	:) fatal "option '-$OPTARG' requires an argument"
- 	   ;;
-
-	\?) fatal "unknown option: '-$OPTARG'"
-	    usage
-	    exit 1
-	    ;;
-    esac
-done
-
-shift $((OPTIND-1))
-
-if [[ $# -lt 1 ]]; then
-    usage
-    exit 1
-fi
-
-if [[ -n $instrument && -n $show_part ]]; then
-    fatal "either '-i' or '-s' should be specified"
-fi
-
-if [[ -n $show_part && $show_part != "pre" && $show_part != "post" ]]; then
-    fatal "bad argument for '-s' ($show_part). Must be 'pre' or 'post'"
-fi
-
-dtag="`date +%Y%m%d-%H%M%S`"
-forced_mode=$mode
-
-for file in "$@"; do
-
-    # select templates
-
-    mode=$forced_mode
-
-    if [[ -z $mode ]]; then
-	suff=${file##*.}
-
-	case $suff in
-	    pl) mode=perl;;
-	    py) mode=python;;
-	    c) mode=c;;
-	    h) mode=h;;
-	    C|cc|cpp|cxx|c++) mode=c++;;
-	    H|hh|hpp|hxx|h++) mode=h++;;
-	    sh|ksh) mode=ksh;;
-	    *) fatal "cannot deduct language from filename '$file'";;
-	esac
-    fi
-
-    unset is_executable
-
-    case $mode in
-	perl) pre="$perl_template_pre"
-	      post="$perl_template_post"
-	      is_executable=1
-	      ;;
-
-	python) pre="$python_template_pre"
-	      post="$python_template_post"
-	      is_executable=1
-	      ;;
-
-        c) pre="$c_template_pre"
-	   post="$c_template_post"
-	   ;;
-
-        h) pre="$h_template_pre"
-	   post="$h_template_post"
-	   ;;
-
-        c++) pre="$cpp_template_pre"
-	     post="$cpp_template_post"
-	  ;;
-
-        h++) pre="$hpp_template_pre"
-	     post="$hpp_template_post"
-	     ;;
-
-        ksh) pre="$ksh_template_pre"
-	     post="$ksh_template_post"
-	     is_executable=1
-	     ;;
- 
-        cmain) pre="$cmain_template_pre"
-	       post="$cmain_template_post"
-	       ;;
-
-        c++main) pre="$cppmain_template_pre"
-	         post="$cppmain_template_post"
-	         ;;
-
-        *)  fatal "bad mode: '$mode'"
-	    ;;
-    esac
+def expand_macros(s, filename):
+    "Expand macros in the input stream"
+            
+    cpp_name = re.sub(r'[\s+\.\$\+\-]+', '_', filename)
+    s = re.sub(r'@@@filename@@@', filename, s)
+    s = re.sub(r'@@@cppname@@@', cpp_name, s)
+    s = re.sub(r'@@@ucppname@@@', cpp_name.upper(), s)
+    return s
 
 
-    if [[ -n $instrument ]]; then
-	if [[ ! -a $file ]]; then
-	    fatal "file '$file' does not exist"
-	fi
 
-	if [[ -L $file ]]; then
-	    fatal "file '$file' is a symlink"
-	fi
+usage_string = """Usage:  %prog  [options]  <file>
 
-	tmpf=$TMPDIR/mkskel.fcp-tmp.$dtag.$$.$PPID
-	rm -f $tmpf
-	mv $file $tmpf && \
-	    print "$pre" | macroexpand "$file" > $file && \
-	    cat $tmpf >> $file && \
-	    print "$post" | macroexpand "$file" >> $file || \
-	    exit 1
+%prog creates or adds a generic boilerplate code to the source file specified.
+Unless mode is specified (see '-m' flag), %prog makes an attempt to
+guess the language mode from the filename.
+By default, %prog creates a new file with the skeleton and fails if the
+file already exists. To instrument an already existing file, use '-i' flag.
 
-	rm -f $tmpf
-	exit 0
+%prog supports the following templates:
 
-    elif [[ $show_part = "pre" ]]; then
-	print "$pre" | macroexpand "$file" && exit 0
-	exit 1
+ksh          - KSH script
+perl         - perl script
+python       - python script
+c            - generic C file
+h            - generic C header file
+c++          - C++ file
+h++          - C++ header file
+cmain        - main driver for a C program
+c++main      - main driver for a C++ program
+
+%prog is free software under the terms of the BSD License.
+"""
+
+
+prog = os.path.basename(sys.argv[0])
+program_version = 2.0
+version_string = "%%prog  %s" % program_version
+
+logging.basicConfig(format = prog + 
+                    ": %(levelname)s: %(message)s")
+
+
+# parse command-line options
+
+parser = OptionParser(usage = usage_string,
+                      version = version_string)
+parser.add_option("-f", "--force", help = "Instrument existing file",
+                  action = "store_true", dest = "force")
+parser.add_option("-m", "--mode",
+                  help = "Language mode",
+                  metavar = "MODE", dest = "mode")
+
+(options, args) = parser.parse_args()
+
+if len(args) != 1 :
+    parser.print_help()
+    sys.exit()
+
+fname = args[0]
+
+if os.path.isfile(fname) and not options.force:
+    logging.error("Will not instrument existing file (use '-f' to force)")
+    sys,exit(1)
+
+
+# sense mode
     
-    elif [[ $show_part = "post" ]]; then
-	print "$post" | macroexpand "$file" && exit 0
-	exit 1
-    fi
+if not options.mode:
+    suff = os.path.splitext(fname)[1]
+
+    if not suff:
+        logging.fatal("cannot figure out file language (use '-m')")
+        sys.exit(1)
+
+    mode = {
+        '.sh'  : 'ksh',
+        '.ksh' : 'ksh',
+        '.pl'  : 'perl',
+        '.py'  : 'python',
+        '.c'   : 'c',
+        '.h'   : 'h',
+        '.cpp' : 'c++',
+        '.cxx' : 'c++',
+        '.cc'  : 'c++',
+        '.hpp' : 'h++',
+        '.hxx' : 'h++'
+        }.get(suff, None)
+
+    if not mode:
+        logging.fatal("cannot figure out file language (use '-m')")
+        sys.exit(1)
+else:
+    mode = options.mode
     
-    if [[ -a $file ]]; then
-	fatal "file '$file' already exists"
-    fi
 
-    print "$pre" | macroexpand "$file" > $file && \
-	print "<<< insert your code here >>>\n\n" >> $file && \
-	print "$post" | macroexpand "$file" >> $file || \
-	exit 1
+if not mode in pre_templates:
+    logging.fatal("no template defined for mode %s" % mode)
+    sys.exit(1)
 
-    if [[ -n $is_executable ]]; then
-	chmod 755 $file
-    fi
-done
 
-exit 0
+short_name = os.path.basename(fname)
+out_file = fname
+
+with open(out_file, 'w') as fout:
+    fout.write(expand_macros(pre_templates[mode], short_name))
+
+    if options.force:
+        with open(fname, 'r') as fin:
+            for line in fin:
+                fout.write(line)
+        
+    fout.write(expand_macros(post_templates[mode], short_name))
+
+
+if options.force:
+    bkp = fname + ".BAK"
+    os.unlink(bkp)
+    shutil.move(fname, bkp)
+    shutil.move(out_file, fname)
+
+    # elif [[ $show_part = "pre" ]]; then
+    #     print "$pre" | macroexpand "$file" && exit 0
+    #     exit 1
+    
+    # elif [[ $show_part = "post" ]]; then
+    #     print "$post" | macroexpand "$file" && exit 0
+    #     exit 1
+    # fi
+    
+
+sys.exit()
