@@ -491,10 +491,6 @@ main(int argc, char* argv[])
     char options[] = "hVv";
     char* p;
 
-#ifndef __DGUX__
-    extern char* optarg;	// for getopt(3)
-#endif
-
     p = strrchr(argv[0], '/');
     program_name = (p == NULL) ? argv[0] : p + 1;
 
@@ -558,7 +554,8 @@ post_templates['c++main'] = """
 
 pre_templates['python'] = """#!/usr/bin/env python
 
-# 
+\"\"\"
+\"\"\"
 
 
 import re
@@ -567,20 +564,6 @@ import os.path
 import logging
 import sys
 from optparse import OptionParser
-
-
-def redirect_output(file):
-    f = os.open(options.log_file, 1, 0644)
-    os.close(1)
-
-    if os.dup(f) != 1:
-        sys.stderr.write("ERROR: failed to dup STDOUT\\n")
-
-    os.close(2)
-
-    if os.dup(f) != 2:
-        sys.stderr.write("ERROR: failed to dup STDERR\\n")
-
 
 
 usage_string = \"\""Usage:  %prog [options] <arg>
@@ -592,13 +575,7 @@ usage_string = \"\""Usage:  %prog [options] <arg>
 
 
 prog = os.path.basename(sys.argv[0])
-program_version = None          # default: use RCS ID
-
-if not(program_version):
-    program_version = "$Revision: 1.1$"
-    program_version = re.sub("\$.evision:\s*(\S*)\s*\$$", "\g<1>",
-                             program_version)
-
+program_version = 1.0
 version_string = "%%prog  %s" % program_version
 
 logging.basicConfig(format = "%(asctime)s  " + prog + 
@@ -609,13 +586,11 @@ logging.basicConfig(format = "%(asctime)s  " + prog +
 
 parser = OptionParser(usage = usage_string,
                       version = version_string)
-parser.add_option("-l", "--log",
-                  help = "redirect output to a log file",
-                  metavar = "FILE", dest = "log_file")
+#parser.add_option("-l", "--log",
+#                  help = "redirect output to a log file",
+#                  metavar = "FILE", dest = "log_file")
 parser.add_option("-v", "--verbose", help = "verbose operation",
                   action = "store_true", dest = "verbose_mode")
-parser.add_option("--debug", help = "debug mode", 
-                  action = "store_false", dest = "debug_mode")
 
 (options, args) = parser.parse_args()
 
@@ -638,6 +613,11 @@ if options.log_file :
 
 post_templates['python'] = """
 sys.exit()
+
+
+# Local Variables:
+# compile-command: "pylint -r n @@@filename@@@"
+# end:
 """
 
 
