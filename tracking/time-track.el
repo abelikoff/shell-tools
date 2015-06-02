@@ -13,13 +13,13 @@
     "Strategy/Planning"
     "Team meta"))
 
-(defun time-track-add-entry (minutes category activity outcome)
+(defun time-track-add-entry (minutes category project outcome)
   "Track time using ad-hoc entries. Entries are saved in timer-track-file."
 
   (interactive (list
                 (read-number "Minutes: ")
                 (read-string "Category: " nil 'time-track-categories)
-                (read-string "What did you do: ")
+                (read-string "Project: ")
                 (read-string "Outcome: ")))
   (let ((today (format-time-string "%m/%d/%Y")))
     (save-excursion
@@ -33,5 +33,5 @@
             (move-end-of-line nil)
             (insert "\n")))
       (insert (format "%s | %d | %s | %s | %s"
-                      today minutes category activity outcome))
+                      today minutes category project outcome))
       (save-buffer))))
