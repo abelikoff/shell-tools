@@ -76,6 +76,7 @@ week_start = as_of_date + datetime.timedelta(days=-wkday)
 week_end = as_of_date + datetime.timedelta(days=6-wkday)
 
 activities = defaultdict(list)
+hours = defaultdict(int)
 
 with open(TRACK_FILE, 'r') as fin:
     for line in fin:
@@ -95,7 +96,10 @@ with open(TRACK_FILE, 'r') as fin:
             continue
 
         activities[rec[2]].append(rec[4])
+        hours[rec[2]] = hours[rec[2]] + int(rec[1])
 
+
+# output summary report
 
 for key in activities.keys():
 
@@ -107,7 +111,10 @@ for key in activities.keys():
     print('%s\n%s\n' % (key, '=' * len(key)))
 
     for outcome in activities[key]:
-        print('* %s' % outcome)
+        if options.verbose_mode:
+            print('* _(%dh)_ %s.' % (round(hours[key] / 60.0), outcome))
+        else:
+            print('* %s.' % outcome)
 
     print('\n')
 
