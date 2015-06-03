@@ -14,6 +14,46 @@ import sys
 from optparse import OptionParser
 
 
+def format_effort(minutes):
+    if minutes < 60:
+        return '%dm' % minutes
+    elif minutes < 480:
+        return '%.1fh' % (float(minutes) / 60)
+    else:
+        return '%.2fd' % (float(minutes) / 480)
+
+
+def format_category(category, minutes, **kwargs):
+    if 'effort' in kwargs:
+        if kwargs['format'] == 'markdown':
+            effort = '  _[%s]_' % format_effort(minutes)
+        else:
+            effort = '  [%s]' % format_effort(minutes)
+    else:
+        effort = ''
+
+    s = '%s%s' % (category, effort)
+
+    if kwargs['format'] == 'markdown':
+        return '%s\n%s\n' % (s, '=' * len(s))
+    else:
+        return s + '\n'
+
+
+def format_outcome(outcome, minutes, **kwargs):
+    if 'effort' in kwargs:
+        if kwargs['format'] == 'markdown':
+            effort = '_[%s]_' % format_effort(minutes)
+        else:
+            effort = '[%s]' % format_effort(minutes)
+
+        effort = '%7s  ' % effort
+    else:
+        effort = ''
+
+    return '* %s%s.' % (effort, outcome)
+
+
 usage_string = """Usage:  %prog [options] [YYYY/MM/DD]
 
 %prog processes time log file and generates a weekly report
@@ -40,6 +80,8 @@ parser = OptionParser(usage = usage_string,
 #                  metavar = "FILE", dest = "log_file")
 parser.add_option("-a", "--all", help = "display all categories",
                   action = "store_true", dest = "all_categories")
+parser.add_option("-f", "--format", help = "output format",
+                  default = "color", dest = "format")
 parser.add_option("-v", "--verbose", help = "verbose operation",
                   action = "store_true", dest = "verbose_mode")
 
@@ -76,13 +118,20 @@ week_start = as_of_date + datetime.timedelta(days=-wkday)
 week_end = as_of_date + datetime.timedelta(days=6-wkday)
 
 activities = defaultdict(list)
-hours = defaultdict(int)
+minutes = defaultdict(float)
 
 with open(TRACK_FILE, 'r') as fin:
     for line in fin:
-        rec = [x.strip() for x in line.split(' | ')]
+        rec = [x.strip() for x in re.split('\s*\|\s*', line)]
 
-        if len(rec) != 5:
+        if len(rec) == 4:
+            (category, outcome, effort) = (rec[2], rec[3], rec[1])
+        elif len(rec) == 5:
+            if rec[4] == '':
+                (category, outcome, effort) = (rec[2], rec[3], rec[1])
+            else:
+                (category, outcome, effort) = (rec[2], rec[4], rec[1])
+        else:
             continue
 
         # only process records for week in question
@@ -95,11 +144,16 @@ with open(TRACK_FILE, 'r') as fin:
         if rec_date < week_start or rec_date > week_end:
             continue
 
-        activities[rec[2]].append(rec[4])
-        hours[rec[2]] = hours[rec[2]] + int(rec[1])
+        activities[category].append((outcome, int(effort)))
+        minutes[category] = minutes[category] + int(effort)
 
 
 # output summary report
+
+kwargs = { 'format' : options.format }
+
+if options.verbose_mode:
+    kwargs['effort'] = True
 
 for key in activities.keys():
 
@@ -108,13 +162,10 @@ for key in activities.keys():
         if not options.all_categories:
             continue;
 
-    print('%s\n%s\n' % (key, '=' * len(key)))
+    print(format_category(key, minutes[key], **kwargs))
 
     for outcome in activities[key]:
-        if options.verbose_mode:
-            print('* _(%dh)_ %s.' % (round(hours[key] / 60.0), outcome))
-        else:
-            print('* %s.' % outcome)
+        print(format_outcome(outcome[0], outcome[1], **kwargs))
 
     print('\n')
 
