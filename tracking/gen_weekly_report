@@ -3,7 +3,6 @@
 """ Generate weekly report from time log.
 """
 
-
 import datetime
 from collections import defaultdict
 import re
@@ -12,6 +11,7 @@ import os.path
 import logging
 import sys
 from optparse import OptionParser
+from colorama import init, Fore, Back, Style
 
 
 def format_effort(minutes):
@@ -36,8 +36,10 @@ def format_category(category, minutes, **kwargs):
 
     if kwargs['format'] == 'markdown':
         return '%s\n%s\n' % (s, '=' * len(s))
+    elif kwargs['format'] == 'color':
+        return '%s%s%s' % (Fore.YELLOW, s, Fore.RESET)
     else:
-        return s + '\n'
+        return s
 
 
 def format_outcome(outcome, minutes, **kwargs):
@@ -155,7 +157,7 @@ kwargs = { 'format' : options.format }
 if options.verbose_mode:
     kwargs['effort'] = True
 
-for key in activities.keys():
+for key in sorted(activities.keys()):
 
     # skip personal categories
     if key == 'Personal':
@@ -167,7 +169,7 @@ for key in activities.keys():
     for outcome in activities[key]:
         print(format_outcome(outcome[0], outcome[1], **kwargs))
 
-    print('\n')
+    print('')
 
 sys.exit()
 
