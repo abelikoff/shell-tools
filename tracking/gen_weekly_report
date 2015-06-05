@@ -109,6 +109,10 @@ elif len(args) != 0:
     parser.print_help()
     sys.exit()
 
+if not options.format in ('raw', 'color', 'markdown'):
+    logging.fatal('Bad format: ' + options.format)
+    sys.exit(1)
+
 if not as_of_date:
     logging.fatal('Bad as-of date: ' + args[0])
     sys.exit(1)
@@ -119,8 +123,8 @@ wkday = as_of_date.weekday()
 week_start = as_of_date + datetime.timedelta(days=-wkday)
 week_end = as_of_date + datetime.timedelta(days=6-wkday)
 
-activities = defaultdict(list)
-minutes = defaultdict(float)
+activities = defaultdict(dict)  # category -> activity -> effort
+minutes = defaultdict(float)    # category -> total effort
 
 with open(TRACK_FILE, 'r') as fin:
     for line in fin:
@@ -146,7 +150,13 @@ with open(TRACK_FILE, 'r') as fin:
         if rec_date < week_start or rec_date > week_end:
             continue
 
-        activities[category].append((outcome, int(effort)))
+        outcome = re.sub('\.\s*$', '', outcome)
+
+        if not outcome in activities[category]:
+            activities[category][outcome] = 0
+
+        activities[category][outcome] = \
+                activities[category][outcome] + int(effort)
         minutes[category] = minutes[category] + int(effort)
 
 
@@ -165,9 +175,10 @@ for key in sorted(activities.keys()):
             continue;
 
     print(format_category(key, minutes[key], **kwargs))
+    outcomes = activities[key]
 
-    for outcome in activities[key]:
-        print(format_outcome(outcome[0], outcome[1], **kwargs))
+    for outcome, effort in outcomes.iteritems():
+        print(format_outcome(outcome, effort, **kwargs))
 
     print('')
 
