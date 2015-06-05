@@ -167,7 +167,8 @@ kwargs = { 'format' : options.format }
 if options.verbose_mode:
     kwargs['effort'] = True
 
-for key in sorted(activities.keys()):
+for key in sorted(activities.keys(),
+                  key=lambda act: minutes[act], reverse=True):
 
     # skip personal categories
     if key == 'Personal':
