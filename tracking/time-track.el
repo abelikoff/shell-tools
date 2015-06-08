@@ -34,4 +34,5 @@
             (insert "\n")))
       (insert (format "%s | %d | %s | %s | %s"
                       today minutes category project outcome))
-      (save-buffer))))
+      (save-buffer)
+      (kill-buffer))))
