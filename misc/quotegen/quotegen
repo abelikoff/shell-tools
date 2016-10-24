@@ -60,6 +60,7 @@ attributed to famous people.
 Several famous people come out of the box (selected by -p/--preset option):
 
 - 'bismarck'       (Otto von Bismarck - this is also the default)
+- 'churchill'      (Sir Winston Churchill)
 - 'dulles'         (Allen Dulles)
 - 'thatcher'       (Margareth Thatcher)
 """
@@ -88,6 +89,10 @@ if args.signature:
 if args.preset == 'dulles':
     portrait_file = 'assets/dulles.jpg'
     signature = 'Аллен Даллес'
+
+elif args.preset == 'churchill':
+    portrait_file = 'assets/churchill.jpg'
+    signature = 'Уинстон Черчилль'
 
 elif args.preset == 'thatcher':
     portrait_file = 'assets/thatcher.jpg'

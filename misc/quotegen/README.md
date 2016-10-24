@@ -44,6 +44,7 @@
 Программа поставляется с несколькими preset'ами (`-p`):
 
 * _bismarck_ (по умолчанию)
+* _churchill_
 * _dulles_
 * _thatcher_
 
