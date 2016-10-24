@@ -1,6 +1,6 @@
 # quotegen - генератор цитат врагов России
 
-[screenshot](screenshot.png)
+![screenshot](screenshot.png)
 
 
 ## Предисловие
