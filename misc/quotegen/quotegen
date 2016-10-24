@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import argparse
 import logging
@@ -29,22 +30,78 @@ def quote2lines(line):
     return lines
 
 
+# From http://blog.client9.com/2007/08/28/python-pil-and-png-metadata-take-2.html
+
+def pngsave(im, file):
+    "Save PNG image preserving metadata."
+
+    reserved = ('interlace', 'gamma', 'dpi', 'transparency', 'aspect')
+
+    # undocumented class
+    from PIL import PngImagePlugin
+    meta = PngImagePlugin.PngInfo()
+
+    # copy metadata into new object
+    for k,v in im.info.items():
+        if k in reserved:
+            continue
+
+        meta.add_text(k, v, 0)
+
+    im.save(file, "PNG", pnginfo=meta)
+
+
 # handle inputs
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-a', '--author', type=str, help='Quote author')
+description = """
+Generate an image with a quote and a portrait. Perfect for fake quotes
+attributed to famous people.
+
+Several famous people come out of the box (selected by -p/--preset option):
+
+- 'bismarck'       (Otto von Bismarck - this is also the default)
+- 'dulles'         (Allen Dulles)
+- 'thatcher'       (Margareth Thatcher)
+"""
+
+parser = argparse.ArgumentParser(description=description,
+                                 formatter_class=argparse.RawTextHelpFormatter)
+parser.add_argument('-p', '--preset', type=str, help='Preset to use')
+parser.add_argument('-i', '--image', metavar='FILE', dest='portrait',
+                    help='File with author\'s image')
+parser.add_argument('-s', '--signature', dest='signature',
+                    help='Author\'s signature')
+parser.add_argument('-o', '--output', metavar='FILE', dest='output_file',
+                    default='quote.png', help='Output file')
 #parser.add_argument('quote', nargs='*')
-parser.add_argument('quote')
+parser.add_argument('quote', help='Actual quote to use')
 args = parser.parse_args()
 
-if args.author == 'dulles':
-    portrait_file = 'dulles.jpg'
+portrait_file = signature = None
+
+if args.portrait:
+    portrait_file = args.portrait
+
+if args.signature:
+    signature = args.signature
+
+if args.preset == 'dulles':
+    portrait_file = 'assets/dulles.jpg'
     signature = 'Аллен Даллес'
-elif not args.author or args.author == 'bismarck':
-    portrait_file = 'bismarck.jpg'
-    signature = 'Отто фон Бисмарк'
+
+elif args.preset == 'thatcher':
+    portrait_file = 'assets/thatcher.jpg'
+    signature = 'Маргарет Тэтчер'
+
+elif not args.preset or args.preset == 'bismarck':
+    if not portrait_file:
+        portrait_file = 'assets/bismarck.jpg'
+
+    if not signature:
+        signature = 'Отто фон Бисмарк'
+
 else:
-    logging.fatal('No such author')
+    logging.fatal('No such preset')
 
 
 # generate basic image
@@ -62,15 +119,31 @@ xpos = img.size[0] - target_width - 30
 ypos = int((img.size[1] - target_height) / 2)
 img.paste(picture, (xpos, ypos))
 
+font = ImageFont.truetype("assets/B52.ttf", 20)
+font_sig = ImageFont.truetype("assets/B52.ttf", 16)
+quote_lines = quote2lines(args.quote)
+
+
+# calculate vertical position of the block of text
+
+y_delta = 5                     # extra spacing between lines
+extra_sig_offset = 30
+block_height = 0
+
+for ii in range(len(quote_lines)):
+    line = quote_lines[ii]
+    block_height += draw.textsize(line, font=font)[1] + y_delta
+
+block_height += draw.textsize(signature, font=font_sig)[1] + extra_sig_offset
+
+if block_height > 340:
+    logging.fatal('text is too large to fit on image')
+
+y_offset = int((400 - block_height) / 2)
+x_offset = 25
+
 
 # render the quote
-
-font = ImageFont.truetype("B52.ttf", 20)
-font_sig = ImageFont.truetype("B52.ttf", 16)
-quote_lines = quote2lines(args.quote)
-y_offset = 100
-y_delta = 20
-x_offset = 25
 
 for ii in range(len(quote_lines)):
     line = quote_lines[ii]
@@ -82,11 +155,20 @@ for ii in range(len(quote_lines)):
         line += '»'
 
     draw.text((x_offset, y_offset), line, font=font)
-    y_offset += y_delta
+    y_offset += draw.textsize(line, font=font)[1] + y_delta
 
 x_offset += 120
-y_offset += y_delta
+y_offset += extra_sig_offset
 draw.text((x_offset, y_offset), '-- ' + signature, font=font_sig)
 del draw
 
-img.save('quote.png')
+
+# save image with metadata
+
+project_url = 'https://github.com/abelikoff/shell-tools/tree/master/misc/quotegen'
+img.info = { 'Author': 'Alexander L. Belikoff',
+             'Source': project_url,
+             'Comment': project_url }
+
+#img.save(args.output_file)
+pngsave(img, args.output_file)
