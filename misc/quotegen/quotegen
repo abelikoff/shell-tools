@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+
+import argparse
+import logging
+from PIL import Image, ImageDraw, ImageFont
+
+CHARS_PER_LINE = 30
+
+
+def quote2lines(line):
+    "Split the quote into appropriately sized lines."
+
+    words = line.split()
+    lines = []
+    cur_line = ''
+
+    for word in words:
+        if len(cur_line + ' ' + word) > CHARS_PER_LINE:
+            lines.append(cur_line)
+            cur_line = word
+        elif cur_line != '':
+            cur_line += ' ' + word
+        else:
+            cur_line = word
+
+    if cur_line != '':
+        lines.append(cur_line)
+
+    return lines
+
+
+# handle inputs
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-a', '--author', type=str, help='Quote author')
+#parser.add_argument('quote', nargs='*')
+parser.add_argument('quote')
+args = parser.parse_args()
+
+if args.author == 'dulles':
+    portrait_file = 'dulles.jpg'
+    signature = 'Аллен Даллес'
+elif not args.author or args.author == 'bismarck':
+    portrait_file = 'bismarck.jpg'
+    signature = 'Отто фон Бисмарк'
+else:
+    logging.fatal('No such author')
+
+
+# generate basic image
+
+img = Image.new('RGB', (600, 400))
+draw = ImageDraw.Draw(img)
+draw.rectangle([(10, 10), (img.size[0] - 10, img.size[1] - 10)],
+               outline='#BBBBBB')
+
+picture = Image.open(portrait_file, 'r')
+target_width = 200
+target_height = int((float(target_width) / picture.size[0]) * picture.size[1])
+picture = picture.resize((target_width, target_height))
+xpos = img.size[0] - target_width - 30
+ypos = int((img.size[1] - target_height) / 2)
+img.paste(picture, (xpos, ypos))
+
+
+# render the quote
+
+font = ImageFont.truetype("B52.ttf", 20)
+font_sig = ImageFont.truetype("B52.ttf", 16)
+quote_lines = quote2lines(args.quote)
+y_offset = 100
+y_delta = 20
+x_offset = 25
+
+for ii in range(len(quote_lines)):
+    line = quote_lines[ii]
+
+    if ii == 0:
+        line = '«' + line
+
+    if ii == len(quote_lines) - 1:
+        line += '»'
+
+    draw.text((x_offset, y_offset), line, font=font)
+    y_offset += y_delta
+
+x_offset += 120
+y_offset += y_delta
+draw.text((x_offset, y_offset), '-- ' + signature, font=font_sig)
+del draw
+
+img.save('quote.png')
