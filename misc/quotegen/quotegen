@@ -113,7 +113,7 @@ else:
 
 img = Image.new('RGB', (600, 400))
 draw = ImageDraw.Draw(img)
-draw.rectangle([(10, 10), (img.size[0] - 10, img.size[1] - 10)],
+draw.rectangle([(10, 10), (img.size[0] - 10, img.size[1] - 12)],
                outline='#BBBBBB')
 
 picture = Image.open(portrait_file, 'r')
@@ -126,6 +126,7 @@ img.paste(picture, (xpos, ypos))
 
 font = ImageFont.truetype("assets/B52.ttf", 20)
 font_sig = ImageFont.truetype("assets/B52.ttf", 16)
+font_url = ImageFont.truetype("assets/FreeMono.ttf", 10)
 quote_lines = quote2lines(args.quote)
 
 
@@ -165,6 +166,7 @@ for ii in range(len(quote_lines)):
 x_offset += 120
 y_offset += extra_sig_offset
 draw.text((x_offset, y_offset), '-- ' + signature, font=font_sig)
+draw.text((600 - 85, 400 - 12), 'goo.gl/wr9bgX', fill='#DDDD00', font=font_url)
 del draw
 
 
