@@ -84,10 +84,10 @@ my %opts;
 Getopt::Long::Configure("require_order");
 Getopt::Long::Configure("no_ignore_case");
 unless (GetOptions(\%opts,
-		   "debug|d",
-		   "help|h|?",
-		   "verbose|v",
-		   "version|V")) {
+                   "debug|d",
+                   "help|h|?",
+                   "verbose|v",
+                   "version|V")) {
     usage();
     exit EXIT_FAILURE;
 }
@@ -102,8 +102,8 @@ my $do_debug = $opts{debug};
 
 if ($opts{version}) {
     unless ($version) {
-	$version = q/$""" + """Revision: 0.0 $/;
-	$version =~ s/\$.evision:\s*(\S*)\s*\$$/$1/;
+        $version = q/$""" + """Revision: 0.0 $/;
+        $version =~ s/\$.evision:\s*(\S*)\s*\$$/$1/;
     }
 
     print "$prog $version\\n";
@@ -149,7 +149,7 @@ sub fatal(@)
 sub debug(@)
 {
     print "DEBUG: " . (caller(0))[0] . ":" . (caller(0))[2] . ": @_\\n"
-	if $do_debug;
+        if $do_debug;
 }
 
 
@@ -181,7 +181,7 @@ $prog supports the following options:
 
 pre_templates['ksh'] = """#!/bin/ksh
 
-# 
+#
 
 
 prog=${0##*/}
@@ -192,9 +192,9 @@ unset version                        # program version (RCS revision if unset)
 
 if [[ -z $TMPDIR ]]; then
     if [[ -d /usr/tmp ]]; then
-	export TMPDIR=/usr/tmp
+        export TMPDIR=/usr/tmp
     else
-	export TMPDIR=/tmp
+        export TMPDIR=/tmp
     fi
 fi
 
@@ -251,37 +251,37 @@ unset do_debug do_verbose
 
 while getopts ":dhVv" opt ; do
     case $opt in
-	d) do_debug=1
-	   ;;
+        d) do_debug=1
+           ;;
 
-	h) usage
-	   exit 0 
-	   ;;
+        h) usage
+           exit 0
+           ;;
 
-	V) if [[ -z $version ]]; then
-	       if [[ '$""" + """Revision$' = "\$R""evision\$" ]]; then
-	           version=$(echo '$""" + """Rev: 0.0 $'  | \
-				sed "s/^\$""Rev: *\(.*\) *\$$/\1/")
-	       else
-	           version=$(echo '$""" + """Revision: 0.0 $'  | \
-				sed "s/^\$""Revision: *\(.*\) *\$$/\1/")
-	       fi
-	   fi
+        V) if [[ -z $version ]]; then
+               if [[ '$""" + """Revision$' = "\$R""evision\$" ]]; then
+                   version=$(echo '$""" + """Rev: 0.0 $'  | \
+                                sed "s/^\$""Rev: *\(.*\) *\$$/\1/")
+               else
+                   version=$(echo '$""" + """Revision: 0.0 $'  | \
+                                sed "s/^\$""Revision: *\(.*\) *\$$/\1/")
+               fi
+           fi
 
-	   print "$prog $version"
-	   exit 0
-	   ;;
+           print "$prog $version"
+           exit 0
+           ;;
 
-	v) do_verbose=1
-	   ;;
+        v) do_verbose=1
+           ;;
 
-	:) fatal "option '-$OPTARG' requires an argument"
- 	   ;;
+        :) fatal "option '-$OPTARG' requires an argument"
+           ;;
 
-	\?) error "unknown option: '-$OPTARG'"
+        \?) error "unknown option: '-$OPTARG'"
             usage
-	    exit 1
-	    ;;
+            exit 1
+            ;;
     esac
 done
 
@@ -363,7 +363,7 @@ post_templates['h++'] = """
 
 pre_templates['cmain'] = """/** @file @@@filename@@@
  *
- * 
+ *
  */
 
 #ifndef lint
@@ -386,10 +386,10 @@ static void
 usage(void)
 {
     fprintf(stderr, "Usage:  %s  [options]  <arg>\\n\\n"
-	   "  -V            show version\\n"
-	   "  -v            verbose mode\\n"
-	   "  -h            show this screen\\n",
-	   program_name);
+           "  -V            show version\\n"
+           "  -v            verbose mode\\n"
+           "  -h            show this screen\\n",
+           program_name);
 }
 
 
@@ -401,46 +401,46 @@ main(int argc, char* argv[])
     char* p;
 
 #ifndef __DGUX__
-    extern char* optarg;	/* for getopt(3) */
+    extern char* optarg;        /* for getopt(3) */
     extern int optind, opterr, optopt;
 #endif
 
     p = strrchr(argv[0], '/');
     strncpy(program_name, ((p == NULL) ? argv[0] : p + 1),
-	    sizeof(program_name));
+            sizeof(program_name));
     program_name[sizeof(program_name) - 1] = '\\0';
 
 
     /* parse the command line */
 
     while ((oc = getopt(argc, argv, options)) != EOF) {
-	switch (oc) {
-	case 'h':		/* help message */
-	    usage();
-	    exit(EXIT_SUCCESS);
+        switch (oc) {
+        case 'h':               /* help message */
+            usage();
+            exit(EXIT_SUCCESS);
 
-	case 'V':		/* version number */
-	    /* printf("%s version %s (build %d)\\n\\n"
-		   "Built by %s in %s:%s on %s\\n",
-		   program_name, APP_VERSION_STRING, APP_VERSION_BUILD,
-		   APP_BUILDER, APP_BUILD_HOST, APP_BUILD_PATH,
-		   APP_BUILD_TIME); */
-	    exit(EXIT_SUCCESS);
+        case 'V':               /* version number */
+            /* printf("%s version %s (build %d)\\n\\n"
+                   "Built by %s in %s:%s on %s\\n",
+                   program_name, APP_VERSION_STRING, APP_VERSION_BUILD,
+                   APP_BUILDER, APP_BUILD_HOST, APP_BUILD_PATH,
+                   APP_BUILD_TIME); */
+            exit(EXIT_SUCCESS);
 
-	case 'v':		/* verbose mode */
-	    verbose_mode = 1;
-	    break;
+        case 'v':               /* verbose mode */
+            verbose_mode = 1;
+            break;
 
-	case '?':
-	default:
-	    usage();
-	    exit(EXIT_FAILURE);
-	}
+        case '?':
+        default:
+            usage();
+            exit(EXIT_FAILURE);
+        }
     }
 
     if (optind != argc - 1) {
-	usage();
-	exit(EXIT_FAILURE);
+        usage();
+        exit(EXIT_FAILURE);
     }
 """
 
@@ -469,7 +469,7 @@ static const char RCSid[] = "$""" + """Id$";
 using namespace std;
 
 
-static string program_name;	// program name
+static string program_name;     // program name
 static bool verbose_mode = false;
 
 
@@ -477,10 +477,10 @@ static void
 usage()
 {
     cout << "\\nUsage:  " << program_name << "  [options]  <arg>\\n\\n"
-//	 << "  -d <num>      set debug level\\n"
-	 << "  -V            show version\\n"
-	 << "  -v            verbose mode\\n"
-	 << "  -h            show this screen\\n";
+//       << "  -d <num>      set debug level\\n"
+         << "  -V            show version\\n"
+         << "  -v            verbose mode\\n"
+         << "  -h            show this screen\\n";
 }
 
 
@@ -496,52 +496,52 @@ main(int argc, char* argv[])
 
 
     // parse the command line
-    
+
     while ((oc = getopt(argc, argv, options)) != EOF) {
-	switch (oc) {
+        switch (oc) {
 #if 0
-	case 'd':.
-	    {
-		istringstream is(optarg);
+        case 'd':.
+            {
+                istringstream is(optarg);
                 int val;
 
-		if (!(is >> val) || val <= 0) {
-		    cerr << program_name << ": ERROR: bad value: '" 
+                if (!(is >> val) || val <= 0) {
+                    cerr << program_name << ": ERROR: bad value: '"
                          << optarg << "'\\n"
-		    exit(EXIT_FAILURE);
-		}
-	    }
+                    exit(EXIT_FAILURE);
+                }
+            }
 
-	    break;
+            break;
 #endif
 
-	case 'h':		// help screen
-	    usage();
-	    exit(EXIT_SUCCESS);
+        case 'h':               // help screen
+            usage();
+            exit(EXIT_SUCCESS);
 
-	case 'V':		// version number
-	    cout << program_name << " version "
-		 << APP_VERSION_STRING
-		 << " (build " << APP_VERSION_BUILD << ")\\n\\n"
-		 << "Built by " << APP_BUILDER
-		 << " in " << APP_BUILD_HOST << ':' << APP_BUILD_PATH
-		 << " on " << APP_BUILD_TIME << endl << endl;
-	    exit(EXIT_SUCCESS);
+        case 'V':               // version number
+            cout << program_name << " version "
+                 << APP_VERSION_STRING
+                 << " (build " << APP_VERSION_BUILD << ")\\n\\n"
+                 << "Built by " << APP_BUILDER
+                 << " in " << APP_BUILD_HOST << ':' << APP_BUILD_PATH
+                 << " on " << APP_BUILD_TIME << endl << endl;
+            exit(EXIT_SUCCESS);
 
-	case 'v':		// verbose mode
-	    verbose_mode = true;
-	    break;
+        case 'v':               // verbose mode
+            verbose_mode = true;
+            break;
 
-	case '?':
-	default:
-	    usage();
-	    exit(EXIT_FAILURE);
-	}
+        case '?':
+        default:
+            usage();
+            exit(EXIT_FAILURE);
+        }
     }
 
     if (optind != argc - 1) {
-	usage();
-	exit(EXIT_FAILURE);
+        usage();
+        exit(EXIT_FAILURE);
     }
 
 """
@@ -552,7 +552,7 @@ post_templates['c++main'] = """
 """
 
 
-pre_templates['python'] = """#!/usr/bin/env python
+pre_templates['python2'] = """#!/usr/bin/env python
 
 \"\"\"
 \"\"\"
@@ -578,7 +578,7 @@ prog = os.path.basename(sys.argv[0])
 program_version = 1.0
 version_string = "%%prog  %s" % program_version
 
-logging.basicConfig(format = "%(asctime)s  " + prog + 
+logging.basicConfig(format = "%(asctime)s  " + prog +
                     ": %(levelname)s: %(message)s")
 
 
@@ -611,7 +611,7 @@ if options.log_file :
 
 """
 
-post_templates['python'] = """
+post_templates['python2'] = """
 sys.exit()
 
 
@@ -621,10 +621,75 @@ sys.exit()
 """
 
 
+pre_templates['python'] = """#!/usr/bin/env python
+\"\"\"
+
+<<<PROGRAM DESCRIPTION>>>
+
+\"\"\"
+
+import sys
+import argparse
+import logging
+
+
+__version__ = '1.0'
+
+
+def main(args):
+    \"Main entry point.\"
+
+    # YOUR CODE GOES HERE
+"""
+
+post_templates['python'] = """
+
+
+def _parse_args():
+    \"Parse command line args.\"
+
+    parser = argparse.ArgumentParser(description=globals()['__doc__'],
+                                     formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('-D', '--debug', action='store_true',
+                        dest='debug_mode', default=False,
+                        help='debug mode')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        dest='verbose_mode', default=False,
+                        help='verbose mode')
+    parser.add_argument('--version', action='version',
+                        version='%(prog)s {version}'.format(version=
+                                                            __version__))
+    parser.add_argument('args', type=str, nargs='*',
+                        help='Arguments to the program')
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+    OPTIONS = _parse_args()
+
+    if OPTIONS.debug_mode:
+        logging.basicConfig(level=logging.DEBUG,
+                            format='%(levelname)s: %(message)s')
+    else:
+        logging.basicConfig(format='%(levelname)s: %(message)s')
+
+    try:
+        main(OPTIONS)
+        sys.exit(0)
+
+    except KeyboardInterrupt as exc: # Ctrl-C
+        raise exc
+
+
+# Local Variables:
+# compile-command: "pylint -r n @@@filename@@@"
+# end:
+"""
+
 
 def expand_macros(s, filename):
     "Expand macros in the input stream"
-            
+
     cpp_name = re.sub(r'[\s+\.\$\+\-]+', '_', filename)
     s = re.sub(r'@@@filename@@@', filename, s)
     s = re.sub(r'@@@cppname@@@', cpp_name, s)
@@ -645,7 +710,8 @@ file already exists. To instrument an already existing file, use '-i' flag.
 
 ksh          - KSH script
 perl         - perl script
-python       - python script
+python2      - python script (legacy v2)
+python       - python script (v3 compliant)
 c            - generic C file
 h            - generic C header file
 c++          - C++ file
@@ -661,7 +727,7 @@ prog = os.path.basename(sys.argv[0])
 program_version = 2.0
 version_string = "%%prog  %s" % program_version
 
-logging.basicConfig(format = prog + 
+logging.basicConfig(format = prog +
                     ": %(levelname)s: %(message)s")
 
 
@@ -691,7 +757,7 @@ if os.path.isfile(fname) and not options.force:
 
 
 # sense mode
-    
+
 if not options.mode:
     suff = os.path.splitext(fname)[1]
 
@@ -718,7 +784,7 @@ if not options.mode:
         sys.exit(1)
 else:
     mode = options.mode
-    
+
 
 if not mode in pre_templates:
     logging.fatal("no template defined for mode %s" % mode)
@@ -735,7 +801,7 @@ with open(out_file, 'w') as fout:
         with open(fname, 'r') as fin:
             for line in fin:
                 fout.write(line)
-        
+
     fout.write(expand_macros(post_templates[mode], short_name))
 
 
@@ -748,11 +814,11 @@ if options.force:
     # elif [[ $show_part = "pre" ]]; then
     #     print "$pre" | macroexpand "$file" && exit 0
     #     exit 1
-    
+
     # elif [[ $show_part = "post" ]]; then
     #     print "$post" | macroexpand "$file" && exit 0
     #     exit 1
     # fi
-    
+
 
 sys.exit()
