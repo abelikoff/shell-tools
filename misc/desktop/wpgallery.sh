@@ -10,13 +10,54 @@ timeout=20m
 
 prog=$(basename $0)
 
-if [[ $# -eq 1 && $1 == "-h" ]]; then
-    echo "Usage:  $prog  [<wallpaper_dir> [<timeout>]]"
-    exit 0
-fi
+function usage() {
+    echo "
+Usage:  $prog  [<wallpaper_dir> [<timeout>]]
+
+
+$prog sets and periodically changes the wallpaper.
+
+
+$prog supports the following options:
+
+    -g                        - Use gsettings to set wallpaper.
+                                (default: use ImageMagick)
+    -h                        - display this message
+
+"
+}
+
+function fatal() {
+    echo "$prog:  ERROR: " $@ 2>&1
+    exit 1
+}
+
+
+# parse options
+
+unset use_gsettings
+
+while getopts ":gh" opt ; do
+    case $opt in
+        g) use_gsettings=1
+           ;;
+
+        h) usage
+           exit 0
+           ;;
+
+        :) fatal "option '-$OPTARG' requires an argument"
+           ;;
+
+        \?) fatal "unknown option: '-$OPTARG'"
+            ;;
+    esac
+done
+
+shift $((OPTIND-1))
 
 if [[ $# -gt 2 ]]; then
-    echo "Usage:  $prog  [<wallpaper_dir> [<timeout>]]" 2>&1
+    usage
     exit 1
 fi
 
@@ -29,8 +70,7 @@ if [[ $# -eq 2 ]]; then
 fi
 
 if [[ ! -d $pictdir ]]; then
-    echo "$prog: ERROR: no such directory: $pictdir" 2>&1
-    exit 1
+    fatal "no such directory: $pictdir"
 fi
 
 
@@ -39,10 +79,17 @@ fi
 if pidof -x $prog > /dev/null; then
     for p in $(pidof -x $prog); do
         if [[ $p -ne $$ ]]; then
-            echo "$prog: ERROR: already running" 2>&1
-            exit 1
+            fatal "already running"
         fi
     done
+fi
+
+if [[ ! $use_gsettings ]]; then
+    geometry="$(xdpyinfo  | grep -oP 'dimensions:\s+\K\S+')"
+
+    which display > /dev/null || {
+        fatal "ImageMagick not installed (can't find 'display' program)"
+    }
 fi
 
 
@@ -55,13 +102,15 @@ while true; do
     pic_file=$(ls $pictdir/*.jpg $pictdir/*.jpeg | shuf -n1)
 
     if [[ $pic_file == "" ]]; then
-        echo "$prog: no image files in $pictdir" 2>&1
-        exit 1
+        fatal "no image files in $pictdir"
     else
-        gsettings set org.gnome.desktop.background picture-uri \
-            "file://${pic_file}"
+        if [[ -n $use_gsettings ]]; then
+            gsettings set org.gnome.desktop.background picture-uri \
+              "file://${pic_file}"
+        else
+            display -size "${geometry}" -window root "${pic_file}"
+        fi
     fi
 
     sleep $timeout
 done
-
