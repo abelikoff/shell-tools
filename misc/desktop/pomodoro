@@ -1,0 +1,59 @@
+#!/usr/bin/env wish -f
+
+# A simple Pomodoro timer
+
+set backgrounds [dict create normal Red paused Gray finished Green]
+set foregrounds [dict create normal White paused Red finished White]
+
+wm overrideredirect . 1
+wm geometry . -0+0
+
+label .counter -font {Helvetica 24} \
+    -background [dict get $backgrounds normal] \
+    -foreground [dict get $foregrounds normal] \
+    -width 3 -textvariable minutes_remaining
+grid .counter -ipadx 10 -ipady 4
+
+bind .counter <1> { set paused [expr {!$paused}] }
+bind . <3> { exit }
+
+set minutes 25
+set minutes_remaining $minutes
+set paused 0
+set seconds [expr {$minutes * 60}]
+set ticktock 0
+
+# Run the countdown
+
+while { $seconds >= 0 } {
+    set minutes_remaining [expr {min($seconds / 60 + 1, $minutes)}]
+
+    if { !$paused } {
+        incr seconds -1
+
+        .counter configure \
+            -background [dict get $backgrounds normal] \
+            -foreground [dict get $foregrounds normal]
+    } else {
+        if { $ticktock } {
+            puts "tick"
+            .counter configure \
+                -background [dict get $backgrounds paused] \
+                -foreground [dict get $foregrounds paused]
+        } else {
+            puts "tock"
+            .counter configure \
+                -background [dict get $backgrounds normal] \
+                -foreground [dict get $foregrounds normal]
+        }
+
+        set ticktock [expr {!$ticktock}]
+    }
+
+    update
+    after 1000
+}
+
+.counter configure \
+    -background [dict get $backgrounds finished] \
+    -foreground [dict get $foregrounds finished]
