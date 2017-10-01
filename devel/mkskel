@@ -691,12 +691,12 @@ pre_templates['bash'] = """#!/bin/bash
 #
 
 
-prog=${0##*/}
-version=0.1                  # program version
+readonly PROG=${0##*/}
+readonly PROG_VERSION=0.1       # program version
 
-shopt -s failglob            # fail upon non-matched globs
-set -o pipefail              # propagate pipe failures
-set -u                       # fail upon unset variables
+shopt -s failglob               # fail upon non-matched globs
+set -o pipefail                 # propagate pipe failures
+set -u                          # fail upon unset variables
 
 
 # figure out scratch directory
@@ -712,12 +712,12 @@ fi
 
 function usage {
     echo "
-    Usage:  $prog  [options]
+    Usage:  ${PROG}  [options]
 
-$prog
+${PROG}
 
 
-$prog supports the following options:
+${PROG} supports the following options:
 
     -v                        - verbose operation
     -V                        - display program version
@@ -733,7 +733,7 @@ function verbose {
 
 
 function error {
-    echo "$prog: ERROR:" $@ 2>&1
+    echo "${PROG}: ERROR:" $@ >&2
 }
 
 
@@ -744,7 +744,7 @@ function fatal {
 
 
 function warning {
-    echo "$prog: WARNING:" $@ 2>&1
+    echo "${PROG}: WARNING:" $@ >&2
 }
 
 
@@ -754,21 +754,26 @@ unset do_verbose
 
 while getopts ":hVv" opt; do
     case $opt in
-        h) usage
-           exit 0
-           ;;
+        h)
+            usage
+            exit 0
+            ;;
 
-        V) echo "$prog version $version"
-           exit 0
-           ;;
+        V)
+            echo "${PROG} version ${PROG_VERSION}"
+            exit 0
+            ;;
 
-        v) do_verbose=1
-           ;;
+        v)
+            do_verbose=1
+            ;;
 
-        :) fatal "option '-$OPTARG' requires an argument"
-           ;;
+        :)
+            fatal "option '-$OPTARG' requires an argument"
+            ;;
 
-        \?) fatal "unknown option: '-$OPTARG'"
+        \?)
+            fatal "unknown option: '-$OPTARG'"
             ;;
     esac
 done
