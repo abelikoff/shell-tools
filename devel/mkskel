@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# create a basic skeleton of a ksh, perl, C, or C++ program
+# create a basic skeleton of a *sh, perl, C, or C++ program
 
 
-# Copyright (c) 1995-2013, Alexander L. Belikoff ( http://belikoff.net )
+# Copyright (c) 1995-2017, Alexander L. Belikoff ( http://belikoff.net )
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -686,6 +686,104 @@ if __name__ == '__main__':
 # end:
 """
 
+pre_templates['bash'] = """#!/bin/bash
+
+#
+
+
+prog=${0##*/}
+version=0.1                  # program version
+
+shopt -s failglob            # fail upon non-matched globs
+set -o pipefail              # propagate pipe failures
+set -u                       # fail upon unset variables
+
+
+# figure out scratch directory
+
+if [[ -z $TMPDIR ]]; then
+    if [[ -d /usr/tmp ]]; then
+        export TMPDIR=/usr/tmp
+    else
+        export TMPDIR=/tmp
+    fi
+fi
+
+
+function usage {
+    echo "
+    Usage:  $prog  [options]
+
+$prog
+
+
+$prog supports the following options:
+
+    -v                        - verbose operation
+    -V                        - display program version
+    -h                        - display this message
+
+"
+}
+
+
+function verbose {
+    [[ -n $do_verbose ]] && echo $@
+}
+
+
+function error {
+    echo "$prog: ERROR:" $@ 2>&1
+}
+
+
+function fatal {
+    error $@
+    exit 1
+}
+
+
+function warning {
+    echo "$prog: WARNING:" $@ 2>&1
+}
+
+
+# parse options
+
+unset do_verbose
+
+while getopts ":hVv" opt; do
+    case $opt in
+        h) usage
+           exit 0
+           ;;
+
+        V) echo "$prog version $version"
+           exit 0
+           ;;
+
+        v) do_verbose=1
+           ;;
+
+        :) fatal "option '-$OPTARG' requires an argument"
+           ;;
+
+        \?) fatal "unknown option: '-$OPTARG'"
+            ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+if [[ $# -ne 1 ]]; then
+    usage
+    exit 1
+fi
+
+"""
+
+post_templates['bash'] = "\n"
+
 
 def expand_macros(s, filename):
     "Expand macros in the input stream"
@@ -708,7 +806,8 @@ file already exists. To instrument an already existing file, use '-i' flag.
 
 %prog supports the following templates:
 
-ksh          - KSH script
+bash         - bash script
+ksh          - ksh script
 perl         - perl script
 python2      - python script (legacy v2)
 python       - python script (v3 compliant)
@@ -766,7 +865,7 @@ if not options.mode:
         sys.exit(1)
 
     mode = {
-        '.sh'  : 'ksh',
+        '.sh'  : 'bash',
         '.ksh' : 'ksh',
         '.pl'  : 'perl',
         '.py'  : 'python',
