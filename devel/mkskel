@@ -910,14 +910,4 @@ if options.force:
     shutil.move(fname, bkp)
     shutil.move(out_file, fname)
 
-    # elif [[ $show_part = "pre" ]]; then
-    #     print "$pre" | macroexpand "$file" && exit 0
-    #     exit 1
-
-    # elif [[ $show_part = "post" ]]; then
-    #     print "$post" | macroexpand "$file" && exit 0
-    #     exit 1
-    # fi
-
-
 sys.exit()
