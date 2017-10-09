@@ -108,7 +108,10 @@ while true; do
             gsettings set org.gnome.desktop.background picture-uri \
               "file://${pic_file}"
         else
-            display -size "${geometry}" -window root "${pic_file}"
+            tmp_file=$(mktemp ${prog}.XXXXXXXX.jpg)
+            convert -resize "${geometry}^" -gravity center -extent "${geometry}" "${pic_file}" "${tmp_file} \
+                && display -window root "${tmp_file}"
+            rm -f ${tmp_file}
         fi
     fi
 
