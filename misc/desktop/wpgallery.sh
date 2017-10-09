@@ -109,7 +109,7 @@ while true; do
               "file://${pic_file}"
         else
             tmp_file=$(mktemp ${prog}.XXXXXXXX.jpg)
-            convert -resize "${geometry}^" -gravity center -extent "${geometry}" "${pic_file}" "${tmp_file} \
+            convert -resize "${geometry}^" -gravity center -extent "${geometry}" "${pic_file}" "${tmp_file}" \
                 && display -window root "${tmp_file}"
             rm -f ${tmp_file}
         fi
