@@ -8,7 +8,7 @@
 pictdir="$HOME/Pictures/wallpapers"
 timeout=20m
 
-prog=$(basename $0)
+prog=$(basename "$0")
 
 function usage() {
     echo "
@@ -28,7 +28,7 @@ $prog supports the following options:
 }
 
 function fatal() {
-    echo "$prog:  ERROR: " $@ 2>&1
+    echo "$prog:  ERROR: $*" >&2
     exit 1
 }
 
@@ -76,8 +76,8 @@ fi
 
 # check if program is already running
 
-if pidof -x $prog > /dev/null; then
-    for p in $(pidof -x $prog); do
+if pidof -x "$prog" > /dev/null; then
+    for p in $(pidof -x "$prog"); do
         if [[ $p -ne $$ ]]; then
             fatal "already running"
         fi
@@ -112,5 +112,5 @@ while true; do
         fi
     fi
 
-    sleep $timeout
+    sleep "$timeout"
 done
