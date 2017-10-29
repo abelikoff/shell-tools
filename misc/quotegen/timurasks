@@ -1,0 +1,76 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import argparse
+import locale
+import logging
+import time
+from PIL import Image, ImageDraw, ImageFont
+
+
+# From http://blog.client9.com/2007/08/28/python-pil-and-png-metadata-take-2.html
+
+def pngsave(im, file):
+    "Save PNG image preserving metadata."
+
+    reserved = ('interlace', 'gamma', 'dpi', 'transparency', 'aspect')
+
+    # undocumented class
+    from PIL import PngImagePlugin
+    meta = PngImagePlugin.PngInfo()
+
+    # copy metadata into new object
+    for k,v in im.info.items():
+        if k in reserved:
+            continue
+
+        meta.add_text(k, v, 0)
+
+    im.save(file, "PNG", pnginfo=meta)
+
+
+# handle inputs
+
+description = """
+Generate an image with a Twitter-style 'quote' from Timur Mansorunov.
+"""
+
+parser = argparse.ArgumentParser(description=description,
+                                 formatter_class=argparse.RawTextHelpFormatter)
+parser.add_argument('-o', '--output', metavar='FILE', dest='output_file',
+                    default='quote.png', help='Output file')
+#parser.add_argument('quote', nargs='*')
+parser.add_argument('quote', help='Actual quote to use')
+args = parser.parse_args()
+
+
+# generate basic image
+
+img = Image.new('RGB', (700, 200), (255, 255, 255, 255))
+draw = ImageDraw.Draw(img)
+
+picture = Image.open('assets/timur.jpg', 'r')
+img.paste(picture, (20, 20))
+
+font_name = ImageFont.truetype("assets/LiberationSans-Regular.ttf", 24)
+font_text = ImageFont.truetype("assets/LiberationSans-Regular.ttf", 32)
+text_color = (0, 0, 0)
+font_date = ImageFont.truetype("assets/LiberationSans-Regular.ttf", 20)
+date_color = (160, 160, 160)
+
+locale.setlocale(locale.LC_TIME, "ru_RU")
+draw.text((145, 25), "Тимур Мансорунов", font=font_name, fill=text_color)
+draw.text((145, 60), time.strftime("%d %B %Y в 21:04"), font=font_date,
+          fill=date_color)
+draw.text((20, 145), args.quote, font=font_text, fill=text_color)
+del draw
+
+
+# save image with metadata
+
+project_url = 'https://github.com/abelikoff/shell-tools/tree/master/misc/quotegen'
+img.info = { 'Author': 'Alexander L. Belikoff',
+             'Source': project_url,
+             'Comment': project_url }
+
+pngsave(img, args.output_file)
