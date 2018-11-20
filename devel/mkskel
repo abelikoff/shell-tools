@@ -648,8 +648,9 @@ post_templates['python'] = """
 def _parse_args():
     \"Parse command line args.\"
 
-    parser = argparse.ArgumentParser(description=globals()['__doc__'],
-                                     formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=globals()['__doc__'],
+        formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-D', '--debug', action='store_true',
                         dest='debug_mode', default=False,
                         help='debug mode')
@@ -695,22 +696,24 @@ readonly PROG=${0##*/}
 readonly PROG_VERSION=0.1       # program version
 
 shopt -s failglob               # fail upon non-matched globs
-set -o pipefail                 # propagate pipe failures
-set -u                          # fail upon unset variables
+set -Eeuo pipefail              # paranoid mode (terminate on errors,
+                                # pipe failures, unset variables)
 
 
-# figure out scratch directory
-
-if [[ -z $TMPDIR ]]; then
-    if [[ -d /usr/tmp ]]; then
-        export TMPDIR=/usr/tmp
-    else
-        export TMPDIR=/tmp
-    fi
+if [ -t 2 ]; then
+    ansi_err="\e[41m"
+    ansi_warn="\e[93m"
+    ansi_notice="\e[92m"
+    ansi_off="\e[0m"
+else
+    ansi_err=""
+    ansi_warn=""
+    ansi_notice=""
+    ansi_off=""
 fi
 
 
-function usage {
+usage() {
     echo "
     Usage:  ${PROG}  [options]
 
@@ -727,24 +730,29 @@ ${PROG} supports the following options:
 }
 
 
-function verbose {
+verbose() {
     [[ -n $do_verbose ]] && echo $@
 }
 
 
-function error {
-    echo "${PROG}: ERROR:" $@ >&2
+error() {
+    echo -e "${ansi_err}${PROG}: ERROR:" $@ "${ansi_off}" >&2
 }
 
 
-function fatal {
+fatal() {
     error $@
     exit 1
 }
 
 
-function warning {
-    echo "${PROG}: WARNING:" $@ >&2
+warning() {
+    echo -e "${ansi_warn}${PROG}: WARNING:" $@ "${ansi_off}" >&2
+}
+
+
+notice() {
+    echo -e "${ansi_notice}${PROG}: NOTICE:" $@ "${ansi_off}" >&2
 }
 
 
