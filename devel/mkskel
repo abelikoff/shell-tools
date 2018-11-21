@@ -179,128 +179,6 @@ $prog supports the following options:
 
 """
 
-pre_templates['ksh'] = """#!/bin/ksh
-
-#
-
-
-prog=${0##*/}
-unset version                        # program version (RCS revision if unset)
-
-
-# figure out scratch directory
-
-if [[ -z $TMPDIR ]]; then
-    if [[ -d /usr/tmp ]]; then
-        export TMPDIR=/usr/tmp
-    else
-        export TMPDIR=/tmp
-    fi
-fi
-
-
-function usage {
-    print "
-    Usage:  $prog  [options]
-
-$prog
-
-
-$prog supports the following options:
-
-    -m <dest>                 - mail output to <dest>
-
-    -v                        - verbose operation
-    -d                        - debug mode
-    -V                        - display program version
-    -h                        - display this message
-
-"
-}
-
-
-function debug {
-    [[ -n $do_debug ]] && print "DEBUG: " $@
-}
-
-
-function verbose {
-    [[ -n $do_verbose ]] && print $@
-}
-
-
-function error {
-    print -u2 "$prog: ERROR:" $@
-}
-
-
-function fatal {
-    error $@
-    exit 1
-}
-
-
-function warning {
-    print -u2 "$prog: WARNING:" $@
-}
-
-
-# parse options
-
-unset do_debug do_verbose
-
-while getopts ":dhVv" opt ; do
-    case $opt in
-        d) do_debug=1
-           ;;
-
-        h) usage
-           exit 0
-           ;;
-
-        V) if [[ -z $version ]]; then
-               if [[ '$""" + """Revision$' = "\$R""evision\$" ]]; then
-                   version=$(echo '$""" + """Rev: 0.0 $'  | \
-                                sed "s/^\$""Rev: *\(.*\) *\$$/\1/")
-               else
-                   version=$(echo '$""" + """Revision: 0.0 $'  | \
-                                sed "s/^\$""Revision: *\(.*\) *\$$/\1/")
-               fi
-           fi
-
-           print "$prog $version"
-           exit 0
-           ;;
-
-        v) do_verbose=1
-           ;;
-
-        :) fatal "option '-$OPTARG' requires an argument"
-           ;;
-
-        \?) error "unknown option: '-$OPTARG'"
-            usage
-            exit 1
-            ;;
-    esac
-done
-
-shift $((OPTIND-1))
-
-dtag="`date +%Y%m%d-%H%M%S`"
-
-
-if [[ $# -ne 1 ]]; then
-    usage
-    exit 1
-fi
-
-
-"""
-
-post_templates['ksh'] = "\n"
-
-
 pre_templates['c'] = """/** @file @@@filename@@@ */
 
 #ifndef lint
@@ -700,7 +578,7 @@ set -Eeuo pipefail              # paranoid mode (terminate on errors,
                                 # pipe failures, unset variables)
 
 
-if [ -t 2 ]; then
+if [[ -t 2 ]]; then
     ansi_err="\x1B[41m"
     ansi_warn="\x1B[93m"
     ansi_notice="\x1B[92m"
@@ -731,7 +609,7 @@ ${PROG} supports the following options:
 
 
 verbose() {
-    [[ -n $do_verbose ]] && echo $@
+    [[ -n $VERBOSE_MODE ]] && echo $@
 }
 
 
@@ -758,7 +636,7 @@ notice() {
 
 # parse options
 
-unset do_verbose
+unset VERBOSE_MODE
 
 while getopts ":hVv" opt; do
     case $opt in
@@ -773,7 +651,7 @@ while getopts ":hVv" opt; do
             ;;
 
         v)
-            do_verbose=1
+            VERBOSE_MODE=1
             ;;
 
         :)
@@ -785,6 +663,8 @@ while getopts ":hVv" opt; do
             ;;
     esac
 done
+
+readonly VERBOSE_MODE
 
 shift $((OPTIND-1))
 
@@ -819,7 +699,6 @@ file already exists. To instrument an already existing file, use '-i' flag.
 %prog supports the following templates:
 
 bash         - bash script
-ksh          - ksh script
 perl         - perl script
 python2      - python script (legacy v2)
 python       - python script (v3 compliant)
@@ -878,7 +757,6 @@ if not options.mode:
 
     mode = {
         '.sh': 'bash',
-        '.ksh': 'ksh',
         '.pl': 'perl',
         '.py': 'python',
         '.c': 'c',
