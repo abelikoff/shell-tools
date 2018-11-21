@@ -701,10 +701,10 @@ set -Eeuo pipefail              # paranoid mode (terminate on errors,
 
 
 if [ -t 2 ]; then
-    ansi_err="\e[41m"
-    ansi_warn="\e[93m"
-    ansi_notice="\e[92m"
-    ansi_off="\e[0m"
+    ansi_err="\x1B[41m"
+    ansi_warn="\x1B[93m"
+    ansi_notice="\x1B[92m"
+    ansi_off="\x1B[0m"
 else
     ansi_err=""
     ansi_warn=""
@@ -808,7 +808,6 @@ def expand_macros(s, filename):
     return s
 
 
-
 usage_string = """Usage:  %prog  [options]  <file>
 
 %prog creates or adds a generic boilerplate code to the source file specified.
@@ -839,25 +838,25 @@ prog = os.path.basename(sys.argv[0])
 program_version = 2.0
 version_string = "%%prog  %s" % program_version
 
-logging.basicConfig(format = prog +
+logging.basicConfig(format=prog +
                     ": %(levelname)s: %(message)s")
 
 
 # parse command-line options
 
-parser = OptionParser(usage = usage_string,
-                      version = version_string)
-parser.add_option("-f", "--force", help = "Instrument existing file",
-                  action = "store_true", dest = "force")
+parser = OptionParser(usage=usage_string,
+                      version=version_string)
+parser.add_option("-f", "--force", help="Instrument existing file",
+                  action="store_true", dest="force")
 parser.add_option("-m", "--mode",
-                  help = "Language mode",
-                  metavar = "MODE", dest = "mode")
+                  help="Language mode",
+                  metavar="MODE", dest="mode")
 
 (options, args) = parser.parse_args()
 
 logging.getLogger().setLevel(logging.INFO)
 
-if len(args) != 1 :
+if len(args) != 1:
     parser.print_help()
     sys.exit()
 
@@ -865,7 +864,7 @@ fname = args[0]
 
 if os.path.isfile(fname) and not options.force:
     logging.error("Will not instrument existing file (use '-f' to force)")
-    sys,exit(1)
+    sys, exit(1)
 
 
 # sense mode
@@ -878,18 +877,18 @@ if not options.mode:
         sys.exit(1)
 
     mode = {
-        '.sh'  : 'bash',
-        '.ksh' : 'ksh',
-        '.pl'  : 'perl',
-        '.py'  : 'python',
-        '.c'   : 'c',
-        '.h'   : 'h',
-        '.cpp' : 'c++',
-        '.cxx' : 'c++',
-        '.cc'  : 'c++',
-        '.hpp' : 'h++',
-        '.hxx' : 'h++'
-        }.get(suff, None)
+        '.sh': 'bash',
+        '.ksh': 'ksh',
+        '.pl': 'perl',
+        '.py': 'python',
+        '.c': 'c',
+        '.h': 'h',
+        '.cpp': 'c++',
+        '.cxx': 'c++',
+        '.cc': 'c++',
+        '.hpp': 'h++',
+        '.hxx': 'h++'
+    }.get(suff, None)
 
     if not mode:
         logging.fatal("cannot figure out file language (use '-m')")
