@@ -577,18 +577,19 @@ shopt -s failglob               # fail upon non-matched globs
 set -Eeuo pipefail              # paranoid mode (terminate on errors,
                                 # pipe failures, unset variables)
 
-
 if [[ -t 2 ]]; then
-    ansi_err="\x1B[41m"
-    ansi_warn="\x1B[93m"
-    ansi_notice="\x1B[92m"
-    ansi_off="\x1B[0m"
+    ANSI_ERR="\x1B[41m"
+    ANSI_WARN="\x1B[93m"
+    ANSI_NOTICE="\x1B[92m"
+    ANSI_OFF="\x1B[0m"
 else
-    ansi_err=""
-    ansi_warn=""
-    ansi_notice=""
-    ansi_off=""
+    ANSI_ERR=""
+    ANSI_WARN=""
+    ANSI_NOTICE=""
+    ANSI_OFF=""
 fi
+
+readonly ANSI_ERR ANSI_WARN ANSI_NOTICE ANSI_OFF
 
 
 usage() {
@@ -614,7 +615,7 @@ verbose() {
 
 
 error() {
-    echo -e "${ansi_err}${PROG}: ERROR:" $@ "${ansi_off}" >&2
+    echo -e "${ANSI_ERR}${PROG}: ERROR:" $@ "${ANSI_OFF}" >&2
 }
 
 
@@ -625,12 +626,12 @@ fatal() {
 
 
 warning() {
-    echo -e "${ansi_warn}${PROG}: WARNING:" $@ "${ansi_off}" >&2
+    echo -e "${ANSI_WARN}${PROG}: WARNING:" $@ "${ANSI_OFF}" >&2
 }
 
 
 notice() {
-    echo -e "${ansi_notice}${PROG}: NOTICE:" $@ "${ansi_off}" >&2
+    echo -e "${ANSI_NOTICE}${PROG}: NOTICE:" $@ "${ANSI_OFF}" >&2
 }
 
 
@@ -655,11 +656,11 @@ while getopts ":hVv" opt; do
             ;;
 
         :)
-            fatal "option '-$OPTARG' requires an argument"
+            fatal "option '-${OPTARG}' requires an argument"
             ;;
 
         \?)
-            fatal "unknown option: '-$OPTARG'"
+            fatal "unknown option: '-${OPTARG}'"
             ;;
     esac
 done
