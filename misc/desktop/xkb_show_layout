@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Derived from https://www.codingunicorns.com/blog/2016/09/30/Language-indicator-in-i3wm/
+# Uses xkblayout-state (https://github.com/nonpop/xkblayout-state)
+
+# I3 starts with a limited PATH
+export PATH=$PATH:$HOME/bin
+LNG=$(xkblayout-state print %s | awk '{print toupper($0)}')
+
+case $LNG in
+  "US")
+    CLR=\#00FF00 ;; # green
+  "RU")
+    CLR=\#FF0000 ;; # red
+  *)
+    CLR=\#FFFFFF ;; # all others default-white
+esac
+
+echo "$LNG"
+echo "$LNG"
+echo "$CLR"

@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Show battery status in i3blocks
+
+
+read -r status pct <<<$(acpi | tr ',' ' ' | awk '{print $3, $4}')
+pct=${pct%\%}
+
+color=white
+symbol=""
+
+if [[ $status == "Discharging" ]]; then
+    if [[ $pct -le 10 ]]; then
+        symbol="\uf244"
+        color="red"
+    elif [[ $pct -le 25 ]]; then
+        symbol="\uf243"
+        color="red"
+    elif [[ $pct -le 50 ]]; then
+        symbol="\uf242"
+        color="yellow"
+    elif [[ $pct -le 75 ]]; then
+        symbol="\uf241"
+        color="yellow"
+    else
+        symbol="\uf240"
+        color="green"
+    fi
+
+elif [[ $status == "Charging" ]]; then
+    symbol="\uf0e7"
+
+    if [[ $pct -le 25 ]]; then
+        color="red"
+    elif [[ $pct -le 75 ]]; then
+        color="yellow"
+    else
+        color="green"
+    fi
+
+elif [[ $status == "Full" ]]; then
+    symbol="\uf240"
+    color="green"
+
+else
+    exit 0
+fi
+
+for x in 1 2; do
+    echo -e "<span color='$color'><span font='FontAwesome'>$symbol</span> $pct%</span>"
+done
