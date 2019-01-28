@@ -41,11 +41,21 @@ elif [[ $status == "Charging" ]]; then
 elif [[ $status == "Full" ]]; then
     symbol="\uf240"
     color="green"
+    unset pct
+
+elif [[ $status == "Unknown" ]]; then
+    symbol="\uf1e6"
+    color="white"
+    unset pct
 
 else
     exit 0
 fi
 
 for x in 1 2; do
-    echo -e "<span color='$color'><span font='FontAwesome'>$symbol</span> $pct%</span>"
+    if [[ -n $pct ]]; then
+        echo -e "<span color='$color'><span font='FontAwesome'>$symbol</span> $pct%</span>"
+    else
+        echo -e "<span color='$color'><span font='FontAwesome'>$symbol</span></span>"
+    fi
 done
