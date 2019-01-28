@@ -27,6 +27,11 @@ $prog supports the following options:
 "
 }
 
+function warning() {
+    echo "$prog:  WARNING: $*" >&2
+}
+
+
 function fatal() {
     echo "$prog:  ERROR: $*" >&2
     exit 1
@@ -79,7 +84,8 @@ fi
 if pidof -x "$prog" > /dev/null; then
     for p in $(pidof -x "$prog"); do
         if [[ $p -ne $$ ]]; then
-            fatal "already running"
+            warning "already running"
+            kill $p
         fi
     done
 fi
