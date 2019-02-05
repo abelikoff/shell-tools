@@ -3,13 +3,24 @@
 # Show battery status in i3blocks
 
 
+unset ac_power
+
+if acpi | grep "Battery 0: Discharging, 0%, rate information unavailable" > /dev/null; then
+    ac_power=1
+fi
+
 read -r status pct <<<$(acpi | tr ',' ' ' | awk '{print $3, $4}')
 pct=${pct%\%}
 
 color=white
 symbol=""
 
-if [[ $status == "Discharging" ]]; then
+if [[ -n $ac_power ]]; then
+    symbol="\uf1e6"
+    color="white"
+    unset pct
+
+elif [[ $status == "Discharging" ]]; then
     if [[ $pct -le 10 ]]; then
         symbol="\uf244"
         color="red"
