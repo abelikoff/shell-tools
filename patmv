@@ -1,0 +1,144 @@
+#!/bin/bash
+
+# Pattern-based file renaming.
+
+
+readonly PROG=${0##*/}
+readonly PROG_VERSION=0.1       # program version
+
+shopt -s failglob               # fail upon non-matched globs
+set -Eeuo pipefail              # paranoid mode (terminate on errors,
+                                # pipe failures, unset variables)
+
+if [[ -t 2 ]]; then
+    ANSI_ERR="[31m"
+    ANSI_WARN="[93m"
+    ANSI_NOTICE="[92m"
+    ANSI_OFF="[0m"
+else
+    ANSI_ERR=""
+    ANSI_WARN=""
+    ANSI_NOTICE=""
+    ANSI_OFF=""
+fi
+
+readonly ANSI_ERR ANSI_WARN ANSI_NOTICE ANSI_OFF
+
+
+usage() {
+    echo "
+    Usage:  ${PROG}  [options]  <pattern>  <replacement>  <file(s)>
+
+${PROG} replaces patterns in filenames for all files specified.
+
+By default ${PROG} runs in dry-run mode. Passing '-f' flag makes it to
+actually rename the files.
+
+${PROG} supports the following options:
+
+    -f                        - actually do the renaming
+    -v                        - verbose operation
+    -V                        - display program version
+    -h                        - display this message
+
+"
+}
+
+
+verbose() {
+    [[ -n $VERBOSE_MODE ]] && echo $@
+}
+
+
+error() {
+    echo -e "${ANSI_ERR}${PROG}: ERROR:" $@ "${ANSI_OFF}" >&2
+}
+
+
+fatal() {
+    error $@
+    exit 1
+}
+
+
+warning() {
+    echo -e "${ANSI_WARN}${PROG}: WARNING:" $@ "${ANSI_OFF}" >&2
+}
+
+
+notice() {
+    echo -e "${ANSI_NOTICE}${PROG}: NOTICE:" $@ "${ANSI_OFF}" >&2
+}
+
+
+# parse options
+
+VERBOSE_MODE=""
+FORCE_MODE=""
+
+while getopts ":fhVv" opt; do
+    case $opt in
+        f)
+            FORCE_MODE=1
+            ;;
+
+        h)
+            usage
+            exit 0
+            ;;
+
+        V)
+            echo "${PROG} version ${PROG_VERSION}"
+            exit 0
+            ;;
+
+        v)
+            VERBOSE_MODE=1
+            ;;
+
+        :)
+            fatal "option '-${OPTARG}' requires an argument"
+            ;;
+
+        \?)
+            fatal "unknown option: '-${OPTARG}'"
+            ;;
+    esac
+done
+
+readonly VERBOSE_MODE FORCE_MODE
+
+shift $((OPTIND-1))
+
+if [[ $# -lt 3 ]]; then
+    usage
+    exit 1
+fi
+
+if [[ -z $FORCE_MODE ]]; then
+    dummy="echo WILL RUN: "
+else
+    unset dummy
+fi
+
+sedexpr="s/$1/$2/g"
+shift 2
+
+rc=0
+
+for file in "$@"; do
+    if [ ! -e "$file" ]; then
+        error "no such file: '$file'"
+        rc=1
+        continue
+    fi
+
+    newfile=$(echo $file | sed "$sedexpr")
+
+    if [ "$file" != "$newfile" ]; then
+        $dummy mv -- "$file" "$newfile" ||
+            rc=1
+    fi
+done
+
+exit $rc
