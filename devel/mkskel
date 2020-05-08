@@ -515,7 +515,7 @@ set -Eeuo pipefail              # paranoid mode (terminate on errors,
                                 # pipe failures, unset variables)
 
 if [[ -t 2 ]]; then
-    ANSI_ERR="\x1B[41m"
+    ANSI_ERR="\x1B[91m"
     ANSI_WARN="\x1B[93m"
     ANSI_NOTICE="\x1B[92m"
     ANSI_OFF="\x1B[0m"
