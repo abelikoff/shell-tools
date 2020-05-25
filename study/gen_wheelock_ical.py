@@ -10,7 +10,7 @@ import re
 import sys
 import argparse
 import logging
-from ics import Calendar, Event
+from ics import Calendar, Event, DisplayAlarm
 
 try:                            # nice-to-have but not critical
     import colorlogger
@@ -68,8 +68,13 @@ def main(args):
 
 
                 event = Event()
-                event.name = "Wheelock Davenport (%s)" % (assignment)
+                event.name = "%s (%s)" % (args.group, assignment)
                 event.begin = date.strftime("%Y-%m-%d 00:00:00")
+                alarm_time = date + datetime.timedelta(hours=-1)
+                alarm = DisplayAlarm(trigger=alarm_time,
+                                     #datetime.timedelta(days=-1),
+                                     display_text="Wheelock assignment due in 1 day")
+                event.alarms.append(alarm)
                 #date_end = date + datetime.timedelta(days=1)
                 #e.end = date_end.strftime("%Y-%m-%d 00:00:00")
                 event.make_all_day()
