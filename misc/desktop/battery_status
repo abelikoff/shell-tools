@@ -5,11 +5,11 @@
 
 unset ac_power
 
-if acpi | grep "Battery 0: Discharging, 0%, rate information unavailable" > /dev/null; then
+if acpi 2>&1 | grep -e "(Battery 0: Discharging, 0%, rate information unavailable|No support for device type: power_supply)" > /dev/null; then
     ac_power=1
 fi
 
-read -r status pct <<<$(acpi | tr ',' ' ' | awk '{print $3, $4}')
+read -r status pct <<<$(acpi 2>&1 | tr ',' ' ' | awk '{print $3, $4}')
 pct=${pct%\%}
 
 color=white
