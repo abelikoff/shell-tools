@@ -37,6 +37,7 @@ actually rename the files.
 ${PROG} supports the following options:
 
     -f                        - actually do the renaming
+    -i                        - prompt for overwrites
     -v                        - verbose operation
     -V                        - display program version
     -h                        - display this message
@@ -75,8 +76,9 @@ notice() {
 
 VERBOSE_MODE=""
 FORCE_MODE=""
+PROMPT_FLAG=""
 
-while getopts ":fhVv" opt; do
+while getopts ":fhiVv" opt; do
     case $opt in
         f)
             FORCE_MODE=1
@@ -85,6 +87,10 @@ while getopts ":fhVv" opt; do
         h)
             usage
             exit 0
+            ;;
+
+        i)
+            PROMPT_FLAG="-i"
             ;;
 
         V)
@@ -106,7 +112,7 @@ while getopts ":fhVv" opt; do
     esac
 done
 
-readonly VERBOSE_MODE FORCE_MODE
+readonly VERBOSE_MODE FORCE_MODE PROMPT_FLAG
 
 shift $((OPTIND-1))
 
@@ -118,7 +124,7 @@ fi
 if [[ -z $FORCE_MODE ]]; then
     dummy="echo WILL RUN: "
 else
-    unset dummy
+    dummy=""
 fi
 
 sedexpr="s/$1/$2/g"
@@ -136,7 +142,7 @@ for file in "$@"; do
     newfile=$(echo $file | sed "$sedexpr")
 
     if [ "$file" != "$newfile" ]; then
-        $dummy mv -- "$file" "$newfile" ||
+        $dummy mv $PROMPT_FLAG -- "$file" "$newfile" ||
             rc=1
     fi
 done
