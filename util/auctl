@@ -81,12 +81,13 @@ $1 == "*" && $2 == "index:" {
 
 usage() {
     echo "
-    Usage:  ${PROG}  [options]  <command> [<arg(s)>]
+Usage:  ${PROG}  [options]  <command> [<arg(s)>]
 
 ${PROG} allows simple command-line autio management for PulseAudio-based systems.
 
 
 COMMANDS
+--------
 
 Device switching:
 
@@ -105,9 +106,10 @@ Muting:
 
 
 CONFIGURATION
+-------------
 
 ${PROG} uses aliases for each audio device of interest. Aliases are defined
-in the configuration file $CONFIG_FILE in the following way:
+in the configuration file $CONFIG_FILE the following way:
 
 <alias>    <substring>
 
@@ -117,8 +119,8 @@ in the configuration file $CONFIG_FILE in the following way:
 
 ${PROG} supports the following options:
 
+    -n                        - dry run mode (just show commands)
     -v                        - verbose operation
-    -V                        - display program version
     -h                        - display this message
 
 "
@@ -154,18 +156,17 @@ notice() {
 # parse options
 
 VERBOSE_MODE=""
-dryrun="echo WILL RUN: "
+dryrun=""
 
-while getopts ":hVv" opt; do
+while getopts ":hnv" opt; do
     case $opt in
         h)
             usage
             exit 0
             ;;
 
-        V)
-            echo "${PROG} version ${PROG_VERSION}"
-            exit 0
+        n)
+            dryrun="echo WILL RUN: "
             ;;
 
         v)
@@ -185,14 +186,6 @@ done
 readonly VERBOSE_MODE
 
 shift $((OPTIND-1))
-
-
-# use-device <alias>
-# change-device-volume <alias> <change>
-# change-volume <change>
-# mute [<alias>]
-# unmute [<alias>]
-
 
 if [[ $# -lt 1 ]]; then
     usage
