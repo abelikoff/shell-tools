@@ -1,0 +1,285 @@
+#!/bin/bash
+
+# simple command-line tool for basic audio management
+# (because pactl sucks)
+
+
+readonly PROG=${0##*/}
+readonly PROG_VERSION=0.1       # program version
+
+shopt -s failglob               # fail upon non-matched globs
+set -Eeuo pipefail              # paranoid mode (terminate on errors,
+                                # pipe failures, unset variables)
+shopt -s lastpipe               # required for '| read' idiom
+
+if [[ -t 2 ]]; then
+    ANSI_ERR="[91m"
+    ANSI_WARN="[93m"
+    ANSI_NOTICE="[92m"
+    ANSI_OFF="[0m"
+else
+    ANSI_ERR=""
+    ANSI_WARN=""
+    ANSI_NOTICE=""
+    ANSI_OFF=""
+fi
+
+readonly ANSI_ERR ANSI_WARN ANSI_NOTICE ANSI_OFF
+readonly CONFIG_FILE=$HOME/.auctl.conf
+
+
+# get device substring by alias
+
+get_device_substring() {
+    readonly device_alias=$1
+
+    if [[ ! -f $CONFIG_FILE ]]; then
+        fatal "Config file $CONFIG_FILE not found"
+    fi
+
+    awk '$1 == alias {print $2;}' alias=$device_alias $CONFIG_FILE
+}
+
+
+# find sink by name substring
+
+get_sink() {
+    readonly substring=$1
+
+    pacmd list-sinks | awk '
+BEGIN {
+    sink = "none";
+}
+
+NF > 1 && $(NF-1) == "index:" {
+    sink = $NF;
+}
+
+/^\t*name:.*'$substring'/ {
+    print sink;
+    exit;
+}
+' | read sink
+
+    if [[ -n $sink && $sink != "none" ]]; then
+        echo $sink
+    fi
+}
+
+
+# find current sink
+
+get_current_sink() {
+    pacmd list-sinks | awk '
+$1 == "*" && $2 == "index:" {
+    print $3;
+    exit;
+}
+'
+}
+
+
+usage() {
+    echo "
+    Usage:  ${PROG}  [options]  <command> [<arg(s)>]
+
+${PROG} allows simple command-line autio management for PulseAudio-based systems.
+
+
+COMMANDS
+
+Device switching:
+
+  use-device  <alias>               - switch to audio device defined by <alias>
+
+Volume management:
+
+  set-volume  <alias>  <volume>     - change volume for device
+  set-volume           <volume>     - change volume for current device
+
+Muting:
+
+  mute                              - mute current device
+  unmute                            - unmute current device
+  toggle-mute                       - toggle mute for current device
+
+
+CONFIGURATION
+
+${PROG} uses aliases for each audio device of interest. Aliases are defined
+in the configuration file $CONFIG_FILE in the following way:
+
+<alias>    <substring>
+
+..where <substring> is a substring of a device name (as specified by
+'pacmd list-sinks')
+
+
+${PROG} supports the following options:
+
+    -v                        - verbose operation
+    -V                        - display program version
+    -h                        - display this message
+
+"
+}
+
+
+verbose() {
+    [[ -n $VERBOSE_MODE ]] && echo $@
+}
+
+
+error() {
+    echo -e "${ANSI_ERR}${PROG}: ERROR:" $@ "${ANSI_OFF}" >&2
+}
+
+
+fatal() {
+    error $@
+    exit 1
+}
+
+
+warning() {
+    echo -e "${ANSI_WARN}${PROG}: WARNING:" $@ "${ANSI_OFF}" >&2
+}
+
+
+notice() {
+    echo -e "${ANSI_NOTICE}${PROG}: NOTICE:" $@ "${ANSI_OFF}" >&2
+}
+
+
+# parse options
+
+VERBOSE_MODE=""
+dryrun="echo WILL RUN: "
+
+while getopts ":hVv" opt; do
+    case $opt in
+        h)
+            usage
+            exit 0
+            ;;
+
+        V)
+            echo "${PROG} version ${PROG_VERSION}"
+            exit 0
+            ;;
+
+        v)
+            VERBOSE_MODE=1
+            ;;
+
+        :)
+            fatal "option '-${OPTARG}' requires an argument"
+            ;;
+
+        \?)
+            fatal "unknown option: '-${OPTARG}'"
+            ;;
+    esac
+done
+
+readonly VERBOSE_MODE
+
+shift $((OPTIND-1))
+
+
+# use-device <alias>
+# change-device-volume <alias> <change>
+# change-volume <change>
+# mute [<alias>]
+# unmute [<alias>]
+
+
+if [[ $# -lt 1 ]]; then
+    usage
+    exit 1
+fi
+
+command=$1
+
+if [[ $command == "use-device" ]]; then
+    if [[ $# -ne 2 ]]; then
+        fatal "Wrong syntax for '$command'"
+    fi
+
+    device_alias=$2
+    device_pattern=$(get_device_substring $device_alias)
+
+    if [[ -z $device_pattern ]]; then
+        fatal "Unknown alias: $alias"
+    fi
+
+    sink=$(get_sink $device_pattern)
+
+    if [[ -z $sink ]]; then
+        fatal "Cannot find sink for device: $device_pattern"
+    fi
+
+    exec $dryrun pactl set-default-sink $sink
+    exit 1
+
+elif [[ $command == "set-volume" ]]; then
+    if [[ $# -eq 2 ]]; then     # use current device
+        sink=$(get_current_sink)
+        volume="$2"
+    elif [[ $# -eq 3 ]]; then   # use specific device
+        device_alias="$2"
+        device_pattern=$(get_device_substring $device_alias)
+
+        if [[ -z $device_pattern ]]; then
+            fatal "Unknown alias: $alias"
+        fi
+
+        sink=$(get_sink $device_pattern)
+        volume="$3"
+    else
+        fatal "Wrong syntax for '$command'"
+    fi
+
+    if [[ -z $sink ]]; then
+        fatal "Cannot determine sink"
+    fi
+
+    exec $dryrun pactl set-sink-volume $sink $volume
+    exit 1
+
+elif [[ $command == "mute" ]]; then
+    sink=$(get_current_sink)
+
+    if [[ -z $sink ]]; then
+        fatal "Cannot determine current sink"
+    fi
+
+    exec $dryrun pactl set-sink-mute $sink 1
+    exit 1
+
+elif [[ $command == "unmute" ]]; then
+    sink=$(get_current_sink)
+
+    if [[ -z $sink ]]; then
+        fatal "Cannot determine current sink"
+    fi
+
+    exec $dryrun pactl set-sink-mute $sink 0
+    exit 1
+
+elif [[ $command == "toggle-mute" ]]; then
+    sink=$(get_current_sink)
+
+    if [[ -z $sink ]]; then
+        fatal "Cannot determine current sink"
+    fi
+
+    exec $dryrun pactl set-sink-mute $sink toggle
+    exit 1
+
+else
+    usage
+    exit 1
+fi
+
+exit 0
