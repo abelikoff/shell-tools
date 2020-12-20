@@ -98,7 +98,16 @@ $1 == "name:" && in_current {
 
 $1 == "volume:" && in_current {
     volume = $5;
-    print(name, volume);
+}
+
+$1 == "muted:" && in_current {
+    if ($2 == "yes") {
+        print(name, "🔇");
+    }
+    else {
+        print(name, volume);
+    }
+
     exit;
 }
 ' | read name volume
