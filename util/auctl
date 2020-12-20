@@ -314,13 +314,7 @@ elif [[ $command == "toggle-mute" ]]; then
 
 elif [[ $command == "status" ]]; then
     get_status
-
-    # if [[ -z $sink ]]; then
-    #     fatal "Cannot determine current sink"
-    # fi
-
-    # exec $dryrun pactl set-sink-mute $sink toggle
-    exit 1
+    exit 0
 
 else
     usage
