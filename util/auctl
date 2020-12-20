@@ -79,6 +79,43 @@ $1 == "*" && $2 == "index:" {
 }
 
 
+# get current status (sink and volume)
+
+get_status() {
+    pacmd list-sinks | awk '
+BEGIN {
+    name = "";
+    in_current = 0;
+}
+
+$1 == "*" && $2 == "index:" {
+    in_current = 1;
+}
+
+$1 == "name:" && in_current {
+    name = $2;
+}
+
+$1 == "volume:" && in_current {
+    volume = $5;
+    print(name, volume);
+    exit;
+}
+' | read name volume
+
+    if [[ -z $name || -z $volume ]]; then
+        return
+    fi
+
+    if [[ ! -f $CONFIG_FILE ]]; then
+        fatal "Config file $CONFIG_FILE not found"
+    fi
+
+    device_alias=$(awk 'index(name, $2) > 0 {print (NF > 2 ? $3 : $1);}' name=$name $CONFIG_FILE)
+    echo $device_alias $volume
+}
+
+
 usage() {
     echo "
 Usage:  ${PROG}  [options]  <command> [<arg(s)>]
@@ -104,6 +141,10 @@ Muting:
   unmute                            - unmute current device
   toggle-mute                       - toggle mute for current device
 
+Information:
+
+  status                            - show current device and volume level
+
 
 CONFIGURATION
 -------------
@@ -111,10 +152,11 @@ CONFIGURATION
 ${PROG} uses aliases for each audio device of interest. Aliases are defined
 in the configuration file $CONFIG_FILE the following way:
 
-<alias>    <substring>
+<alias>    <substring>    [<symbol>]
 
 ..where <substring> is a substring of a device name (as specified by
-'pacmd list-sinks')
+'pacmd list-sinks'). If <symbol> is specified, it will be used in \`status'
+command output (ti simplify integration with window manager status tools).
 
 
 ${PROG} supports the following options:
@@ -268,6 +310,16 @@ elif [[ $command == "toggle-mute" ]]; then
     fi
 
     exec $dryrun pactl set-sink-mute $sink toggle
+    exit 1
+
+elif [[ $command == "status" ]]; then
+    get_status
+
+    # if [[ -z $sink ]]; then
+    #     fatal "Cannot determine current sink"
+    # fi
+
+    # exec $dryrun pactl set-sink-mute $sink toggle
     exit 1
 
 else
