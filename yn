@@ -2,17 +2,39 @@
 
 # prompt for Yes/No question
 
+shopt -s failglob               # fail upon non-matched globs
+set -Eeuo pipefail              # paranoid mode (terminate on errors,
+                                # pipe failures, unset variables)
+shopt -s lastpipe               # required for '| read' idiom
+
+
+strict=""
+
+if [[ $# -gt 0 && "$1" = "-s" ]]; then
+    strict=1
+    shift
+fi
+
 if [[ $# -ne 1 ]]; then
-    echo "Usage: $(basename $0) <prompt>" >&2
+    echo "Usage: $(basename $0)  [-s]  <prompt>" >&2
     exit 1
 fi
 
-read -p "$1 (y/N) " -n 1 -r
-echo
+while true; do
+    read -p "$1 (y/N) " -n 1 -r
+    echo
 
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    exit 1
-fi
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        exit 0
+    fi
 
-exit 0
+    if [[ -z $strict ]]; then
+        exit 1
+    fi
 
+    if [[ $REPLY =~ ^[Nn]$ ]]; then
+        exit 1
+    fi
+done
+
+exit 1
