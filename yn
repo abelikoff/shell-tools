@@ -5,7 +5,6 @@
 shopt -s failglob               # fail upon non-matched globs
 set -Eeuo pipefail              # paranoid mode (terminate on errors,
                                 # pipe failures, unset variables)
-shopt -s lastpipe               # required for '| read' idiom
 
 
 strict=""
