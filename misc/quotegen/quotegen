@@ -173,7 +173,7 @@ for ii, current_line in enumerate(quote_lines):
 x_offset += 120
 y_offset += extra_sig_offset
 draw.text((x_offset, y_offset), '-- ' + signature, font=font_sig)
-draw.text((600 - 85, 400 - 12), 'goo.gl/wr9bgX', fill='#DDDD00', font=font_url)
+draw.text((600 - 85, 400 - 12), 'belikoff.net/quotegen', fill='#DDDD00', font=font_url)
 del draw
 
 
