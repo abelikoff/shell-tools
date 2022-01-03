@@ -1,8 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import argparse
 import logging
+import sys
 from PIL import Image, ImageDraw, ImageFont
 
 CHARS_PER_LINE = 30
@@ -32,7 +33,7 @@ def quote2lines(line):
 
 # From http://blog.client9.com/2007/08/28/python-pil-and-png-metadata-take-2.html
 
-def pngsave(im, file):
+def pngsave(image, file):
     "Save PNG image preserving metadata."
 
     reserved = ('interlace', 'gamma', 'dpi', 'transparency', 'aspect')
@@ -42,13 +43,13 @@ def pngsave(im, file):
     meta = PngImagePlugin.PngInfo()
 
     # copy metadata into new object
-    for k,v in im.info.items():
+    for k, v in image.info.items():
         if k in reserved:
             continue
 
         meta.add_text(k, v, 0)
 
-    im.save(file, "PNG", pnginfo=meta)
+    image.save(file, "PNG", pnginfo=meta)
 
 
 # handle inputs
@@ -66,6 +67,7 @@ Several famous people come out of the box (selected by -p/--preset option):
 - 'thatcher'       (Margareth Thatcher)
 """
 
+logging.basicConfig(format="%(levelname)s: %(message)s")
 parser = argparse.ArgumentParser(description=description,
                                  formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('-p', '--preset', type=str, help='Preset to use')
@@ -112,6 +114,7 @@ elif not args.preset or args.preset == 'bismarck':
 
 else:
     logging.fatal('No such preset')
+    sys.exit(1)
 
 
 # generate basic image
@@ -141,14 +144,15 @@ y_delta = 5                     # extra spacing between lines
 extra_sig_offset = 30
 block_height = 0
 
-for ii in range(len(quote_lines)):
-    line = quote_lines[ii]
-    block_height += draw.textsize(line, font=font)[1] + y_delta
+for ii, current_line in enumerate(quote_lines):
+    block_height += draw.textsize(current_line, font=font)[1] + y_delta
 
 block_height += draw.textsize(signature, font=font_sig)[1] + extra_sig_offset
 
 if block_height > 340:
     logging.fatal('text is too large to fit on image')
+    sys.exit(1)
+
 
 y_offset = int((400 - block_height) / 2)
 x_offset = 25
@@ -156,17 +160,15 @@ x_offset = 25
 
 # render the quote
 
-for ii in range(len(quote_lines)):
-    line = quote_lines[ii]
-
+for ii, current_line in enumerate(quote_lines):
     if ii == 0:
-        line = '«' + line
+        current_line = '«' + current_line
 
     if ii == len(quote_lines) - 1:
-        line += '»'
+        current_line += '»'
 
-    draw.text((x_offset, y_offset), line, font=font)
-    y_offset += draw.textsize(line, font=font)[1] + y_delta
+    draw.text((x_offset, y_offset), current_line, font=font)
+    y_offset += draw.textsize(current_line, font=font)[1] + y_delta
 
 x_offset += 120
 y_offset += extra_sig_offset
@@ -178,9 +180,9 @@ del draw
 # save image with metadata
 
 project_url = 'https://github.com/abelikoff/shell-tools/tree/master/misc/quotegen'
-img.info = { 'Author': 'Alexander L. Belikoff',
-             'Source': project_url,
-             'Comment': project_url }
+img.info = {'Author': 'Alexander L. Belikoff',
+            'Source': project_url,
+            'Comment': project_url}
 
 #img.save(args.output_file)
 pngsave(img, args.output_file)
