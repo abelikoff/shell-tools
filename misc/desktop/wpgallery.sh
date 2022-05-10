@@ -90,7 +90,13 @@ if pidof -x "$prog" > /dev/null; then
     done
 fi
 
-if [[ ! $use_gsettings ]]; then
+if [[ $use_gsettings ]]; then
+    if gsettings get org.gnome.desktop.interface gtk-theme | grep -i dark > /dev/null; then
+        gconf_key="picture-uri-dark"
+    else
+        gconf_key="picture-uri"
+    fi
+else
     geometry="$(xdpyinfo  | grep -oP 'dimensions:\s+\K\S+')"
 
     which display > /dev/null || {
@@ -111,7 +117,7 @@ while true; do
         fatal "no image files in $pictdir"
     else
         if [[ -n $use_gsettings ]]; then
-            gsettings set org.gnome.desktop.background picture-uri \
+            gsettings set org.gnome.desktop.background $gconf_key \
               "file://${pic_file}"
         else
             tmp_file=$(mktemp ${prog}.XXXXXXXX.jpg)
