@@ -507,89 +507,129 @@ pre_templates['bash'] = """#!/bin/bash
 #
 
 
-readonly PROG=${0##*/}
-readonly PROG_VERSION=0.1       # program version
+readonly program_name=${0##*/}
+readonly program_version=0.1
 
 shopt -s failglob               # fail upon non-matched globs
-set -Eeuo pipefail              # paranoid mode (terminate on errors,
-                                # pipe failures, unset variables)
-
-if [[ -t 2 ]]; then
-    ANSI_ERR="\x1B[91m"
-    ANSI_WARN="\x1B[93m"
-    ANSI_NOTICE="\x1B[92m"
-    ANSI_OFF="\x1B[0m"
-else
-    ANSI_ERR=""
-    ANSI_WARN=""
-    ANSI_NOTICE=""
-    ANSI_OFF=""
-fi
-
-readonly ANSI_ERR ANSI_WARN ANSI_NOTICE ANSI_OFF
+#set -e                          # abort on first error
+set -u                          # disallow undefined variables
+set -o pipefail                 # fail the pipe if one component fails
 
 
 usage() {
     echo "
-    Usage:  ${PROG}  [options]
+    Usage:  ${program_name}  [options]
 
-${PROG}
+${program_name}
 
 
-${PROG} supports the following options:
+${program_name} supports the following options:
 
-    -v                        - verbose operation
-    -V                        - display program version
-    -h                        - display this message
+    -L <log_file>             - append log messages to log file.
+    -d                        - debug mode.
+    -v                        - verbose operation.
+    -V                        - display program version.
+    -h                        - display this message.
 
 "
 }
 
 
+log() {
+    local tag=${log_tag:-${program_name}}
+
+    if [[ -n $log_file ]]; then
+        echo "[`date +"%Y/%m/%d %H:%M:%S %z"`] [$tag] $@" >> $log_file
+    else
+        echo "$@"
+    fi
+}
+
+
 verbose() {
-    [[ -n $VERBOSE_MODE ]] && echo $@
+    [[ -n $verbose_mode ]] && echo "$@"
+}
+
+
+debug() {
+    [[ -n $debug_mode ]] && echo "$@"
 }
 
 
 error() {
-    echo -e "${ANSI_ERR}${PROG}: ERROR:" $@ "${ANSI_OFF}" >&2
+    echo -e "${color_red}${program_name}: ERROR:" "$@" "${color_none}" >&2
 }
 
 
 fatal() {
-    error $@
+    error "$@"
     exit 1
 }
 
 
 warning() {
-    echo -e "${ANSI_WARN}${PROG}: WARNING:" $@ "${ANSI_OFF}" >&2
+    echo -e "${color_yellow}${program_name}: WARNING:" "$@" "${color_none}" >&2
 }
 
 
 notice() {
-    echo -e "${ANSI_NOTICE}${PROG}: NOTICE:" $@ "${ANSI_OFF}" >&2
+    echo -e "${color_notice}${program_name}: NOTICE:" "$@" "${color_none}" >&2
 }
 
 
+cleanup() {
+  trap - SIGINT SIGTERM ERR EXIT
+  # script cleanup here
+}
+
+
+setup_colors() {
+  if [[ -t 2 ]] && [[ -z "${NO_COLOR-}" ]] && [[ "${TERM-}" != "dumb" ]]; then
+    color_none='\033[0m' color_red='\033[0;31m' color_green='\033[0;32m' 
+    color_orange='\033[0;33m' color_blue='\033[0;34m' color_purple='\033[0;35m'
+    color_cyan='\033[0;36m' color_yellow='\033[1;33m'
+  else
+    color_none='' color_red='' color_green='' color_orange='' color_blue='' 
+    color_purple='' color_cyan='' color_yellow=''
+  fi
+
+  readonly color_none color_red color_green color_orange color_blue \
+    color_purple color_cyan color_yellow
+}
+
+
+setup_colors
+
 # parse options
 
-unset VERBOSE_MODE
+verbose_mode=""
+debug_mode=""
+log_file=""
+log_tag=""
 
-while getopts ":hVv" opt; do
+while getopts ":dhL:Vv" opt; do
     case $opt in
+        d)
+            debug_mode=1
+            set -o errtrace
+            ;;
+
         h)
             usage
             exit 0
             ;;
 
+        L)
+            log_file=${OPTARG}
+            ;;
+
         V)
-            echo "${PROG} version ${PROG_VERSION}"
+            echo "${program_name} version ${program_version}"
             exit 0
             ;;
 
         v)
-            VERBOSE_MODE=1
+            verbose_mode=1
             ;;
 
         :)
@@ -602,7 +642,7 @@ while getopts ":hVv" opt; do
     esac
 done
 
-readonly VERBOSE_MODE
+readonly verbose_mode
 
 shift $((OPTIND-1))
 
