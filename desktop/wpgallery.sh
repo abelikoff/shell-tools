@@ -10,6 +10,36 @@ timeout=20m
 
 prog=$(basename "$0")
 
+
+function display_wallpaper() {
+    readonly image_file="$1"
+
+    if [[ -n $use_gsettings ]]; then
+        gsettings set org.gnome.desktop.background $gconf_key \
+                  "file://${image_file}"
+    elif [[ -n $use_kde ]]; then
+        qdbus org.kde.plasmashell /PlasmaShell \
+              org.kde.PlasmaShell.evaluateScript '
+    var allDesktops = desktops();
+    print (allDesktops);
+
+    for (i = 0; i < allDesktops.length; i++) {{
+        d = allDesktops[i];
+        d.wallpaperPlugin = "org.kde.image";
+        d.currentConfigGroup = Array("Wallpaper", "org.kde.image", "General");
+        d.writeConfig("Image", "file://'${image_file}'");
+    }}
+'
+    else
+        tmp_file=$(mktemp ${prog}.XXXXXXXX.jpg)
+        convert -resize "${geometry}^" -gravity center -extent "${geometry}" \
+                "${image_file}" "${tmp_file}" \
+            && display -window root "${tmp_file}"
+        rm -f ${tmp_file}
+    fi
+}
+
+
 function usage() {
     echo "
 Usage:  $prog  [<wallpaper_dir> [<timeout>]]
@@ -22,6 +52,7 @@ $prog supports the following options:
 
     -g                        - Use gsettings to set wallpaper.
                                 (default: use ImageMagick)
+    -k                        - Use KDE (qbus) to set wallpaper.
     -h                        - display this message
 
 "
@@ -40,11 +71,15 @@ function fatal() {
 
 # parse options
 
-unset use_gsettings
+use_gsettings=""
+use_kde=""
 
-while getopts ":gh" opt ; do
+while getopts ":gkh" opt ; do
     case $opt in
         g) use_gsettings=1
+           ;;
+
+        k) use_kde=1
            ;;
 
         h) usage
@@ -64,6 +99,10 @@ shift $((OPTIND-1))
 if [[ $# -gt 2 ]]; then
     usage
     exit 1
+fi
+
+if [[ -n $use_gsettings && -n $use_kde ]]; then
+    fatal "both Gnome and KDE mode specified"
 fi
 
 if [[ $# -ge 1 ]]; then
@@ -90,7 +129,7 @@ if pidof -x "$prog" > /dev/null; then
     done
 fi
 
-if [[ $use_gsettings ]]; then
+if [[ -n $use_gsettings ]]; then
     if gsettings get org.gnome.desktop.interface gtk-theme | grep -i dark > /dev/null; then
         gconf_key="picture-uri-dark"
     else
@@ -116,15 +155,7 @@ while true; do
     if [[ $pic_file == "" ]]; then
         fatal "no image files in $pictdir"
     else
-        if [[ -n $use_gsettings ]]; then
-            gsettings set org.gnome.desktop.background $gconf_key \
-              "file://${pic_file}"
-        else
-            tmp_file=$(mktemp ${prog}.XXXXXXXX.jpg)
-            convert -resize "${geometry}^" -gravity center -extent "${geometry}" "${pic_file}" "${tmp_file}" \
-                && display -window root "${tmp_file}"
-            rm -f ${tmp_file}
-        fi
+        display_wallpaper ${pic_file}
     fi
 
     sleep "$timeout"
