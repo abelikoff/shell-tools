@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+if [[ $# != 1 || -z $1 ]]; then
+    echo "Usage:  $0  <grouping_factor>" >&2
+    exit 1
+fi
+
+arg=$1
+
+exec awk '
+NR % factor == 1 {
+    if (rec) {
+        print rec;
+    }
+
+    rec = sep = "";
+}
+
+{
+    gsub(/^[ \t]+/, "");
+    gsub(/[ \t]+$/, "");
+    gsub(/"/, "\\\042");
+    rec = sprintf("%s%s\042%s\042", rec, sep, $0);
+    sep = ",";
+    next
+}
+
+END {
+    if (rec) {
+        print rec;
+    }
+}' factor=$arg
+
+exit 1
