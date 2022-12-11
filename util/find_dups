@@ -42,13 +42,13 @@ def main(args):
                 if len(file_list) < 2:
                     continue
 
-                print("-" * 80)
+                print("--- ", readable_size(size), " ", "-" * 50)
 
                 for name in file_list:
                     print(name.replace(top_dir, ''))
 
         else:
-            print("-" * 80)
+            print("--- ", readable_size(size), " ", "-" * 50)
 
             for name in file_sizes[size]:
                 print(name.replace(top_dir, ''))
@@ -75,6 +75,17 @@ def get_duplicates_by_size(top_dir):
 
     return dup_files
 
+
+def readable_size(num, suffix="B"):
+    "Get human-readable size."
+
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+        if abs(num) < 1024.0:
+            return f"{num:3.1f} {unit}{suffix}"
+
+        num /= 1024.0
+
+    return f"{num:.1f} Yi{suffix}"
 
 
 def _parse_args():
