@@ -1,60 +1,62 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"Generate an image with an antique-looking quote."
+
 import argparse
 import logging
 import sys
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, PngImagePlugin
+
 
 CHARS_PER_LINE = 30
 
 
-def quote2lines(line):
+def quote2lines(single_line):
     "Split the quote into appropriately sized lines."
 
-    words = line.split()
+    words = single_line.split()
     lines = []
-    cur_line = ''
+    cur_line = ""
 
     for word in words:
-        if len(cur_line + ' ' + word) > CHARS_PER_LINE:
+        if len(cur_line + " " + word) > CHARS_PER_LINE:
             lines.append(cur_line)
             cur_line = word
-        elif cur_line != '':
-            cur_line += ' ' + word
+        elif cur_line != "":
+            cur_line += " " + word
         else:
             cur_line = word
 
-    if cur_line != '':
+    if cur_line != "":
         lines.append(cur_line)
 
     return lines
 
 
-# From http://blog.client9.com/2007/08/28/python-pil-and-png-metadata-take-2.html
+# See http://blog.client9.com/2007/08/28/python-pil-and-png-metadata-take-2.html
+
 
 def pngsave(image, file):
     "Save PNG image preserving metadata."
 
-    reserved = ('interlace', 'gamma', 'dpi', 'transparency', 'aspect')
+    reserved = ("interlace", "gamma", "dpi", "transparency", "aspect")
 
-    # undocumented class
-    from PIL import PngImagePlugin
     meta = PngImagePlugin.PngInfo()
 
     # copy metadata into new object
-    for k, v in image.info.items():
-        if k in reserved:
+    for key, value in image.info.items():
+        if key in reserved:
             continue
 
-        meta.add_text(k, v, 0)
+        meta.add_text(key, value, 0)
 
     image.save(file, "PNG", pnginfo=meta)
 
 
 # handle inputs
 
-description = """
+DESCRIPTION = """
 Generate an image with a quote and a portrait. Perfect for fake quotes
 attributed to famous people.
 
@@ -67,68 +69,73 @@ Several famous people come out of the box (selected by -p/--preset option):
 - 'thatcher'       (Margareth Thatcher)
 """
 
-logging.basicConfig(format="%(levelname)s: %(message)s")
-parser = argparse.ArgumentParser(description=description,
-                                 formatter_class=argparse.RawTextHelpFormatter)
-parser.add_argument('-p', '--preset', type=str, help='Preset to use')
-parser.add_argument('-i', '--image', metavar='FILE', dest='portrait',
-                    help='File with author\'s image')
-parser.add_argument('-s', '--signature', dest='signature',
-                    help='Author\'s signature')
-parser.add_argument('-o', '--output', metavar='FILE', dest='output_file',
-                    default='quote.png', help='Output file')
-#parser.add_argument('quote', nargs='*')
-parser.add_argument('quote', help='Actual quote to use')
+parser = argparse.ArgumentParser(
+    description=DESCRIPTION, formatter_class=argparse.RawTextHelpFormatter
+)
+parser.add_argument("-p", "--preset", type=str, help="Preset to use")
+parser.add_argument(
+    "-i", "--image", metavar="FILE", dest="portrait", help="File with author's image"
+)
+parser.add_argument("-s", "--signature", dest="signature", help="Author's signature")
+parser.add_argument(
+    "-o",
+    "--output",
+    metavar="FILE",
+    dest="output_file",
+    default="quote.png",
+    help="Output file",
+)
+# parser.add_argument('quote', nargs='*')
+parser.add_argument("quote", help="Actual quote to use")
 args = parser.parse_args()
 
-portrait_file = signature = None
+PORTRAIT_FILE = SIGNATURE = None
 
 if args.portrait:
-    portrait_file = args.portrait
+    PORTRAIT_FILE = args.portrait
 
 if args.signature:
-    signature = args.signature
+    SIGNATURE = args.signature
 
-if args.preset == 'dulles':
-    portrait_file = 'assets/dulles.jpg'
-    signature = 'Аллен Даллес'
+if args.preset == "dulles":
+    PORTRAIT_FILE = "assets/dulles.jpg"
+    SIGNATURE = "Аллен Даллес"
 
-elif args.preset == 'churchill':
-    portrait_file = 'assets/churchill.jpg'
-    signature = 'Уинстон Черчилль'
+elif args.preset == "churchill":
+    PORTRAIT_FILE = "assets/churchill.jpg"
+    SIGNATURE = "Уинстон Черчилль"
 
-elif args.preset == 'obama':
-    portrait_file = 'assets/obama.jpg'
-    signature = 'Барак Обама'
+elif args.preset == "obama":
+    PORTRAIT_FILE = "assets/obama.jpg"
+    SIGNATURE = "Барак Обама"
 
-elif args.preset == 'thatcher':
-    portrait_file = 'assets/thatcher.jpg'
-    signature = 'Маргарет Тэтчер'
+elif args.preset == "thatcher":
+    PORTRAIT_FILE = "assets/thatcher.jpg"
+    SIGNATURE = "Маргарет Тэтчер"
 
-elif not args.preset or args.preset == 'bismarck':
-    if not portrait_file:
-        portrait_file = 'assets/bismarck.jpg'
+elif not args.preset or args.preset == "bismarck":
+    if not PORTRAIT_FILE:
+        PORTRAIT_FILE = "assets/bismarck.jpg"
 
-    if not signature:
-        signature = 'Отто фон Бисмарк'
+    if not SIGNATURE:
+        SIGNATURE = "Отто фон Бисмарк"
 
 else:
-    logging.fatal('No such preset')
+    logging.fatal("No such preset")
     sys.exit(1)
 
 
 # generate basic image
 
-img = Image.new('RGB', (600, 400))
+img = Image.new("RGB", (600, 400))
 draw = ImageDraw.Draw(img)
-draw.rectangle([(10, 10), (img.size[0] - 10, img.size[1] - 12)],
-               outline='#BBBBBB')
+draw.rectangle([(10, 10), (img.size[0] - 10, img.size[1] - 12)], outline="#BBBBBB")
 
-picture = Image.open(portrait_file, 'r')
-target_width = 200
-target_height = int((float(target_width) / picture.size[0]) * picture.size[1])
-picture = picture.resize((target_width, target_height))
-xpos = img.size[0] - target_width - 30
+picture = Image.open(PORTRAIT_FILE, "r")
+TARGET_WIDTH = 200
+target_height = int((float(TARGET_WIDTH) / picture.size[0]) * picture.size[1])
+picture = picture.resize((TARGET_WIDTH, target_height))
+xpos = img.size[0] - TARGET_WIDTH - 30
 ypos = int((img.size[1] - target_height) / 2)
 img.paste(picture, (xpos, ypos))
 
@@ -140,49 +147,52 @@ quote_lines = quote2lines(args.quote)
 
 # calculate vertical position of the block of text
 
-y_delta = 5                     # extra spacing between lines
-extra_sig_offset = 30
-block_height = 0
+Y_DELTA = 5  # extra spacing between lines
+EXTRA_SIG_OFFSET = 30
+BLOCK_HEIGHT = 0
 
-for ii, current_line in enumerate(quote_lines):
-    block_height += draw.textsize(current_line, font=font)[1] + y_delta
+for ii, line in enumerate(quote_lines):
+    BLOCK_HEIGHT += draw.textbbox(xy=[0, 0], text=line, font=font)[-1] + Y_DELTA
 
-block_height += draw.textsize(signature, font=font_sig)[1] + extra_sig_offset
+BLOCK_HEIGHT += (
+    draw.textbbox(xy=[0, 0], text=SIGNATURE, font=font_sig)[-1] + EXTRA_SIG_OFFSET
+)
 
-if block_height > 340:
-    logging.fatal('text is too large to fit on image')
+if BLOCK_HEIGHT > 340:
+    logging.fatal("text is too large to fit on image")
     sys.exit(1)
 
-
-y_offset = int((400 - block_height) / 2)
-x_offset = 25
+y_offset = int((400 - BLOCK_HEIGHT) / 2)
+X_OFFSET = 25
 
 
 # render the quote
 
-for ii, current_line in enumerate(quote_lines):
+for ii, line in enumerate(quote_lines):
     if ii == 0:
-        current_line = '«' + current_line
+        line = "«" + line
 
     if ii == len(quote_lines) - 1:
-        current_line += '»'
+        line += "»"
 
-    draw.text((x_offset, y_offset), current_line, font=font)
-    y_offset += draw.textsize(current_line, font=font)[1] + y_delta
+    draw.text((X_OFFSET, y_offset), line, font=font)
+    y_offset += draw.textbbox(xy=(0, 0), text=line, font=font)[-1] + Y_DELTA
 
-x_offset += 120
-y_offset += extra_sig_offset
-draw.text((x_offset, y_offset), '-- ' + signature, font=font_sig)
-draw.text((600 - 85, 400 - 12), 'belikoff.net/quotegen', fill='#DDDD00', font=font_url)
+X_OFFSET += 120
+y_offset += EXTRA_SIG_OFFSET
+draw.text((X_OFFSET, y_offset), "-- " + SIGNATURE, font=font_sig)
+draw.text((600 - 85, 400 - 12), "goo.gl/wr9bgX", fill="#03F4FC", font=font_url)
 del draw
 
 
 # save image with metadata
 
-project_url = 'https://github.com/abelikoff/shell-tools/tree/master/misc/quotegen'
-img.info = {'Author': 'Alexander L. Belikoff',
-            'Source': project_url,
-            'Comment': project_url}
+PROJECT_URL = "https://github.com/abelikoff/shell-tools/tree/master/misc/quotegen"
+img.info = {
+    "Author": "Alexander L. Belikoff",
+    "Source": PROJECT_URL,
+    "Comment": PROJECT_URL,
+}
 
-#img.save(args.output_file)
+# img.save(args.output_file)
 pngsave(img, args.output_file)
