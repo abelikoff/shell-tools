@@ -539,7 +539,7 @@ log() {
     local tag=${log_tag:-${program_name}}
 
     if [[ -n $log_file ]]; then
-        echo "[`date +"%Y/%m/%d %H:%M:%S %z"`] [$tag] $@" >> $log_file
+        echo "[$(date +"%Y/%m/%d %H:%M:%S %z")] [$tag] $*" >> $log_file
     else
         echo "$@"
     fi
@@ -573,7 +573,7 @@ warning() {
 
 
 notice() {
-    echo -e "${color_notice}${program_name}: NOTICE:" "$@" "${color_none}" >&2
+    echo -e "${color_cyan}${program_name}: NOTICE:" "$@" "${color_none}" >&2
 }
 
 
@@ -593,7 +593,7 @@ setup_colors() {
     color_purple='' color_cyan='' color_yellow=''
   fi
 
-  readonly color_none color_red color_green color_orange color_blue \
+  readonly color_none color_red color_green color_orange color_blue \\
     color_purple color_cyan color_yellow
 }
 
