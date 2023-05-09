@@ -547,12 +547,16 @@ log() {
 
 
 verbose() {
-    [[ -n $verbose_mode ]] && echo "$@"
+    if [[ -n $verbose_mode ]]; then
+        echo "$@"
+    fi
 }
 
 
 debug() {
-    [[ -n $debug_mode ]] && echo "$@"
+    if [[ -n $debug_mode ]]; then
+        echo "$@"
+    fi
 }
 
 
