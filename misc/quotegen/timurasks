@@ -58,7 +58,6 @@ text_color = (0, 0, 0)
 font_date = ImageFont.truetype("assets/LiberationSans-Regular.ttf", 20)
 date_color = (160, 160, 160)
 
-locale.setlocale(locale.LC_TIME, "ru_RU")
 draw.text((145, 25), "Тимур Мансорунов", font=font_name, fill=text_color)
 draw.text((145, 60), time.strftime("%d %B %Y в 21:04"), font=font_date,
           fill=date_color)
