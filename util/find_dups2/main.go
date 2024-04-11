@@ -18,7 +18,7 @@ type FileInfo struct {
 	Mtime time.Time
 }
 
-var filesBySig = make(map[string]*list.List)
+var filesBySig = make(map[string]*list.List) // sig+size -> list of files
 var filesBySize = make(map[int64]*list.List) // size -> list of files
 
 func getSignature(path string) (string, error) {
@@ -144,6 +144,11 @@ func showDuplicates() {
 
 func main() {
 	log.SetFlags(log.Lshortfile)
+
+	if len(os.Args) != 2 {
+		log.Fatalf("Usage:  %s  <directory>", os.Args[0])
+	}
+
 	dir := os.Args[1]
 	err := filepath.Walk(dir, groupBySize)
 
