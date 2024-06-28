@@ -12,7 +12,7 @@ prog=$(basename "$0")
 
 
 function display_wallpaper() {
-    readonly image_file="$1"
+    local -r image_file="$1"
 
     if [[ -n $use_gsettings ]]; then
         gsettings set org.gnome.desktop.background $gconf_key \
@@ -130,7 +130,7 @@ if pidof -x "$prog" > /dev/null; then
 fi
 
 if [[ -n $use_gsettings ]]; then
-    if gsettings get org.gnome.desktop.interface gtk-theme | grep -i dark > /dev/null; then
+    if gsettings get org.gnome.desktop.interface color-scheme | grep -i dark > /dev/null; then
         gconf_key="picture-uri-dark"
     else
         gconf_key="picture-uri"
