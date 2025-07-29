@@ -21,6 +21,14 @@
 
             */
 
+        mkskel = pkgs.writeScriptBin "mkskel" ''
+          #!${pkgs.python3.withPackages (ps: with ps; [
+            requests
+          ])}/bin/python
+
+          ${builtins.readFile ./devel/mkskel}
+        '';
+
         patmv = pkgs.writeShellApplication {
           name = "patmv";
           text = builtins.readFile ./util/patmv;
@@ -40,12 +48,13 @@
         in
         {
           packages = {
-            inherit patmv wpgallery yn;
+            inherit mkskel patmv wpgallery yn;
 
             # The default package
             default = pkgs.buildEnv {
               name = "shell-tools";
               paths = [
+                mkskel
                 patmv
                 wpgallery
                 yn
