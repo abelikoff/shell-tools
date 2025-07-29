@@ -35,6 +35,11 @@
 
             */
 
+        patmv = pkgs.writeShellApplication {
+          name = "patmv";
+          text = builtins.readFile ./util/patmv;
+        };
+
         yn = pkgs.writeShellApplication {
           name = "yn";
           runtimeInputs = with pkgs; [ curl ];
@@ -47,12 +52,13 @@
           packages = {
             # Expose packages by their desired names
             #inherit my-tool-one my-tool-two;
-            inherit yn;
+            inherit patmv yn;
 
             # The default package now refers to the local variables, NOT `self`
             default = pkgs.buildEnv {
               name = "shell-tools";
               paths = [
+                patmv
                 yn
                 #my-tool-two # Use the local variable
               ];

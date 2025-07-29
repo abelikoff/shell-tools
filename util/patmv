@@ -1,14 +1,14 @@
 #!/bin/bash
+# shellcheck disable=SC2317
 
 # Pattern-based file renaming.
 
-
 readonly PROG=${0##*/}
-readonly PROG_VERSION=0.1       # program version
+readonly PROG_VERSION=0.1 # program version
 
-shopt -s failglob               # fail upon non-matched globs
-set -Eeuo pipefail              # paranoid mode (terminate on errors,
-                                # pipe failures, unset variables)
+shopt -s failglob  # fail upon non-matched globs
+set -Eeuo pipefail # paranoid mode (terminate on errors,
+# pipe failures, unset variables)
 
 if [[ -t 2 ]]; then
     ANSI_ERR="[31m"
@@ -23,7 +23,6 @@ else
 fi
 
 readonly ANSI_ERR ANSI_WARN ANSI_NOTICE ANSI_OFF
-
 
 usage() {
     echo "
@@ -45,76 +44,64 @@ ${PROG} supports the following options:
 "
 }
 
-
-verbose() {
-    [[ -n $VERBOSE_MODE ]] && echo $@
-}
-
-
 error() {
+    # shellcheck disable=SC2068
     echo -e "${ANSI_ERR}${PROG}: ERROR:" $@ "${ANSI_OFF}" >&2
 }
 
-
 fatal() {
-    error $@
+    error "$@"
     exit 1
 }
 
-
 warning() {
+    # shellcheck disable=SC2068,SC2317
     echo -e "${ANSI_WARN}${PROG}: WARNING:" $@ "${ANSI_OFF}" >&2
 }
 
-
 notice() {
+    # shellcheck disable=SC2068,SC2317
     echo -e "${ANSI_NOTICE}${PROG}: NOTICE:" $@ "${ANSI_OFF}" >&2
 }
 
-
 # parse options
 
-VERBOSE_MODE=""
 FORCE_MODE=""
 PROMPT_FLAG=""
 
-while getopts ":fhiVv" opt; do
+while getopts ":fhiV" opt; do
     case $opt in
-        f)
-            FORCE_MODE=1
-            ;;
+    f)
+        FORCE_MODE=1
+        ;;
 
-        h)
-            usage
-            exit 0
-            ;;
+    h)
+        usage
+        exit 0
+        ;;
 
-        i)
-            PROMPT_FLAG="-i"
-            ;;
+    i)
+        PROMPT_FLAG="-i"
+        ;;
 
-        V)
-            echo "${PROG} version ${PROG_VERSION}"
-            exit 0
-            ;;
+    V)
+        echo "${PROG} version ${PROG_VERSION}"
+        exit 0
+        ;;
 
-        v)
-            VERBOSE_MODE=1
-            ;;
+    :)
+        fatal "option '-${OPTARG}' requires an argument"
+        ;;
 
-        :)
-            fatal "option '-${OPTARG}' requires an argument"
-            ;;
-
-        \?)
-            fatal "unknown option: '-${OPTARG}'"
-            ;;
+    \?)
+        fatal "unknown option: '-${OPTARG}'"
+        ;;
     esac
 done
 
-readonly VERBOSE_MODE FORCE_MODE PROMPT_FLAG
+readonly FORCE_MODE PROMPT_FLAG
 
-shift $((OPTIND-1))
+shift $((OPTIND - 1))
 
 if [[ $# -lt 3 ]]; then
     usage
@@ -139,7 +126,7 @@ for file in "$@"; do
         continue
     fi
 
-    newfile=$(echo $file | sed "$sedexpr")
+    newfile=$(echo "$file" | sed "$sedexpr")
 
     if [ "$file" != "$newfile" ]; then
         $dummy mv $PROMPT_FLAG -- "$file" "$newfile" ||
