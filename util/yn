@@ -2,10 +2,9 @@
 
 # prompt for Yes/No question
 
-shopt -s failglob               # fail upon non-matched globs
-set -Eeuo pipefail              # paranoid mode (terminate on errors,
-                                # pipe failures, unset variables)
-
+shopt -s failglob  # fail upon non-matched globs
+set -Eeuo pipefail # paranoid mode (terminate on errors,
+# pipe failures, unset variables)
 
 strict=""
 
@@ -15,6 +14,7 @@ if [[ $# -gt 0 && "$1" = "-s" ]]; then
 fi
 
 if [[ $# -ne 1 ]]; then
+    # shellcheck disable=SC2086
     echo "Usage: $(basename $0)  [-s]  <prompt>" >&2
     exit 1
 fi

@@ -1,20 +1,29 @@
 {
-  description = "My shell tools";
+  description = "Various tools for UNIX command-line usage";
 
-  # Define the flake's outputs
-  outputs =
-    { self, nixpkgs }:
+  outputs = { self, nixpkgs }:
     let
-      # Define the system we are building for
-      system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
-    in
-    {
-      # Define packages provided by this flake
-      packages.${system} = {
-        # Package a script named 'tool-one'
-        /*
-          my-tool-one = pkgs.writeShellApplication {
+      architectures = [ "x86_64-linux" "aarch64-linux" ];
+
+      # Function to generate all outputs for a given system
+      perSystem = (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+
+          # --- Step 1: Define individual packages as local variables ---
+          /*my-tool-one = pkgs.writeShellApplication {
+            name = "my-tool-one";
+            runtimeInputs = with pkgs; [ jq ];
+            text = ''echo "Tool one reporting in!"'';
+          };
+
+          my-tool-two = pkgs.writeShellApplication {
+            name = "my-tool-two";
+            runtimeInputs = with pkgs; [ curl ];
+            text = ''echo "Tool two here!"'';
+            };
+
+          my-tool-three = pkgs.writeShellApplication {
             name = "my-tool-one";
             runtimeInputs = with pkgs; [ jq coreutils ]; # Specify dependencies
             text = ''
@@ -23,24 +32,37 @@
               # Your script logic goes here
             '';
           };
-        */
 
-        # Package another script from a file named 'scripts/tool-two.sh'
+            */
+
         yn = pkgs.writeShellApplication {
           name = "yn";
           runtimeInputs = with pkgs; [ curl ];
           text = builtins.readFile ./util/yn;
         };
-      };
 
-      # A default package that installs all tools in this flake
-      packages.${system} = {
-        default = pkgs.buildEnv {
-          name = "shell-tools";
-          paths = [
-            self.packages.${system}.yn
-          ];
-        };
-      };
+        in
+        {
+          # --- Step 2: Assemble the final packages set from local variables ---
+          packages = {
+            # Expose packages by their desired names
+            #inherit my-tool-one my-tool-two;
+            inherit yn;
+
+            # The default package now refers to the local variables, NOT `self`
+            default = pkgs.buildEnv {
+              name = "shell-tools";
+              paths = [
+                yn
+                #my-tool-two # Use the local variable
+              ];
+            };
+          };
+        });
+    in
+    {
+      # This part remains the same, generating the final outputs
+      packages = nixpkgs.lib.genAttrs architectures (system: (perSystem
+      system).packages);
     };
 }
