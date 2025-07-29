@@ -35,7 +35,7 @@
 
       # A default package that installs all tools in this flake
       packages.${system}.default = pkgs.buildEnv {
-        name = "my-private-tools";
+        name = "shell-tools";
         paths = [
           self.packages.${system}.yn
         ];
