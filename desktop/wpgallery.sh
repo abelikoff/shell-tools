@@ -4,22 +4,21 @@
 
 # https://github.com/abelikoff/shell-tools
 
-
 pictdir="$HOME/Pictures/wallpapers"
 timeout=20m
 
 prog=$(basename "$0")
 
-
 function display_wallpaper() {
     local -r image_file="$1"
 
     if [[ -n $use_gsettings ]]; then
-        gsettings set org.gnome.desktop.background $gconf_key \
-                  "file://${image_file}"
+        gsettings set org.gnome.desktop.background "$gconf_key" \
+            "file://${image_file}"
     elif [[ -n $use_kde ]]; then
+        # shellcheck disable=SC2086
         qdbus org.kde.plasmashell /PlasmaShell \
-              org.kde.PlasmaShell.evaluateScript '
+            org.kde.PlasmaShell.evaluateScript '
     var allDesktops = desktops();
     print (allDesktops);
 
@@ -31,14 +30,13 @@ function display_wallpaper() {
     }}
 '
     else
-        tmp_file=$(mktemp ${prog}.XXXXXXXX.jpg)
+        tmp_file=$(mktemp "${prog}".XXXXXXXX.jpg)
         convert -resize "${geometry}^" -gravity center -extent "${geometry}" \
-                "${image_file}" "${tmp_file}" \
-            && display -window root "${tmp_file}"
-        rm -f ${tmp_file}
+            "${image_file}" "${tmp_file}" &&
+            display -window root "${tmp_file}"
+        rm -f "${tmp_file}"
     fi
 }
-
 
 function usage() {
     echo "
@@ -62,39 +60,42 @@ function warning() {
     echo "$prog:  WARNING: $*" >&2
 }
 
-
 function fatal() {
     echo "$prog:  ERROR: $*" >&2
     exit 1
 }
-
 
 # parse options
 
 use_gsettings=""
 use_kde=""
 
-while getopts ":gkh" opt ; do
+while getopts ":gkh" opt; do
     case $opt in
-        g) use_gsettings=1
-           ;;
+    g)
+        use_gsettings=1
+        ;;
 
-        k) use_kde=1
-           ;;
+    k)
+        use_kde=1
+        ;;
 
-        h) usage
-           exit 0
-           ;;
+    h)
+        usage
+        exit 0
+        ;;
 
-        :) fatal "option '-$OPTARG' requires an argument"
-           ;;
+    :)
+        fatal "option '-$OPTARG' requires an argument"
+        ;;
 
-        \?) fatal "unknown option: '-$OPTARG'"
-            ;;
+    \?)
+        fatal "unknown option: '-$OPTARG'"
+        ;;
     esac
 done
 
-shift $((OPTIND-1))
+shift $((OPTIND - 1))
 
 if [[ $# -gt 2 ]]; then
     usage
@@ -117,32 +118,30 @@ if [[ ! -d $pictdir ]]; then
     fatal "no such directory: $pictdir"
 fi
 
-
 # check if program is already running
 
-if pidof -x "$prog" > /dev/null; then
+if pidof -x "$prog" >/dev/null; then
     for p in $(pidof -x "$prog"); do
         if [[ $p -ne $$ ]]; then
             warning "already running"
-            kill $p
+            kill "$p"
         fi
     done
 fi
 
 if [[ -n $use_gsettings ]]; then
-    if gsettings get org.gnome.desktop.interface color-scheme | grep -i dark > /dev/null; then
+    if gsettings get org.gnome.desktop.interface color-scheme | grep -i dark >/dev/null; then
         gconf_key="picture-uri-dark"
     else
         gconf_key="picture-uri"
     fi
 else
-    geometry="$(xdpyinfo  | grep -oP 'dimensions:\s+\K\S+')"
+    geometry="$(xdpyinfo | grep -oP 'dimensions:\s+\K\S+')"
 
-    which display > /dev/null || {
+    which display >/dev/null || {
         fatal "ImageMagick not installed (can't find 'display' program)"
     }
 fi
-
 
 # always match, always case insensitive
 
@@ -150,12 +149,13 @@ shopt -s nocaseglob
 shopt -s nullglob
 
 while true; do
-    pic_file=$(ls $pictdir/*.jpg $pictdir/*.jpeg | shuf -n1)
+    # shellcheck disable=SC2012
+    pic_file=$(ls "$pictdir"/*.jpg "$pictdir"/*.jpeg | shuf -n1)
 
     if [[ $pic_file == "" ]]; then
         fatal "no image files in $pictdir"
     else
-        display_wallpaper ${pic_file}
+        display_wallpaper "${pic_file}"
     fi
 
     sleep "$timeout"
