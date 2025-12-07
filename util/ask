@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# ask a multiple choice question
+
+shopt -s failglob  # fail upon non-matched globs
+set -Eeuo pipefail # paranoid mode (terminate on errors,
+# pipe failures, unset variables)
+
+if [[ $# -lt 3 ]]; then
+    # shellcheck disable=SC2086
+    cat <<USAGE >&2
+Usage: $(basename "$0") <prompt> <letter1> <letter2> ...
+
+$(basename "$0") allows asking a multiple-choice question. When the user presses the key
+corresponding to one of the provided letters, that letter is printed to stdout and the
+program terminates. Typical usage would look like this:
+
+    choice=\$( $(basename "$0") "(D)elete duplicate / (I)gnore / (Q)uit?" d i q )
+
+    if [[ "\$choice" == "d" ]]; then
+        ...
+
+USAGE
+    exit 1
+fi
+
+readonly prompt="$1"
+shift
+
+while true; do
+    read -p "$prompt " -n 1 -r
+    echo
+
+    for arg in "$@"; do
+        # convert both to lowercase for case-insensitive match
+        code="${arg,,}"
+        input="${REPLY,,}"
+
+        if [[ $input == "$code" ]]; then
+            echo $arg
+            exit 0
+        fi
+    done
+done
+
+exit 1
