@@ -37,7 +37,6 @@ ${PROG} supports the following options:
 
     -f                        - actually do the renaming
     -i                        - prompt for overwrites
-    -v                        - verbose operation
     -V                        - display program version
     -h                        - display this message
 
@@ -108,13 +107,7 @@ if [[ $# -lt 3 ]]; then
     exit 1
 fi
 
-if [[ -z $FORCE_MODE ]]; then
-    dummy="echo WILL RUN: "
-else
-    dummy=""
-fi
-
-sedexpr="s/$1/$2/g"
+readonly sedexpr="s/$1/$2/g"
 shift 2
 
 rc=0
@@ -129,8 +122,11 @@ for file in "$@"; do
     newfile=$(echo "$file" | sed "$sedexpr")
 
     if [ "$file" != "$newfile" ]; then
-        $dummy mv $PROMPT_FLAG -- "$file" "$newfile" ||
-            rc=1
+        if [[ -z $FORCE_MODE ]]; then
+            echo -e "Will move:\n        $file\n     -> ${ANSI_NOTICE}$newfile${ANSI_OFF}\n"
+        else
+            mv $PROMPT_FLAG -- "$file" "$newfile" || rc=1
+        fi
     fi
 done
 
