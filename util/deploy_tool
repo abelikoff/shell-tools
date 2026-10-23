@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""deploy_tool - symlink files into a target directory (default: ~/bin).
+
+Usage: deploy_tool [-d <tgt_dir>] file(s)
+"""
+
+import argparse
+import os
+import sys
+
+GREEN, MAGENTA, RED, YELLOW, RESET = "\033[32m", "\033[35m", "\033[31m", "\033[33m", "\033[0m"
+USE_COLOR = "NO_COLOR" not in os.environ
+
+
+def say(color, msg, stream=sys.stdout):
+    print(f"{color}{msg}{RESET}" if USE_COLOR else msg, file=stream)
+
+
+def backup_path(path):
+    """Return a free backup name: path.backup, path.backup.1, ..."""
+    candidate = path + ".backup"
+    n = 1
+    while os.path.lexists(candidate):
+        candidate = f"{path}.backup.{n}"
+        n += 1
+    return candidate
+
+
+def deploy(file_arg, tgt_dir):
+    src = os.path.abspath(os.path.expanduser(file_arg))
+    name = os.path.basename(src.rstrip(os.sep))
+
+    dst = os.path.join(tgt_dir, name)
+    if os.path.realpath(dst) == os.path.realpath(src) and not os.path.islink(dst):
+        say(RED, f"Error: {file_arg} is already located in {tgt_dir}", sys.stderr)
+        return False
+
+    if os.path.islink(dst):
+        target = os.readlink(dst)
+        if not os.path.isabs(target):
+            target = os.path.join(os.path.dirname(dst), target)
+        if os.path.abspath(target) == src or os.path.realpath(dst) == os.path.realpath(src):
+            say(MAGENTA, f"Skipping {name} [already deployed]")
+            return True
+        say(RED, f"Replacing symlink for {name}")
+        os.remove(dst)
+        os.symlink(src, dst)
+        return True
+
+    if os.path.lexists(dst):
+        say(YELLOW, f"Backing up {name}")
+        os.rename(dst, backup_path(dst))
+
+    say(GREEN, f"Deploying {name}")
+    os.symlink(src, dst)
+    return True
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="deploy_tool", description="Symlink files into a target directory."
+    )
+    parser.add_argument("-d", dest="tgt_dir", default="~/bin",
+                        help="target directory (default: ~/bin)")
+    parser.add_argument("files", nargs="+", help="file(s) to deploy")
+    args = parser.parse_args()
+
+    tgt_dir = os.path.abspath(os.path.expanduser(args.tgt_dir))
+    if not os.path.isdir(tgt_dir):
+        say(RED, f"Error: target directory {tgt_dir} does not exist", sys.stderr)
+        return 1
+
+    # Validate everything up front so we never do a partial deployment.
+    missing = [f for f in args.files if not os.path.exists(os.path.expanduser(f))]
+    for f in missing:
+        say(RED, f"Error: {f} does not exist", sys.stderr)
+    if missing:
+        return 1
+
+    ok = True
+    for f in args.files:
+        try:
+            ok = deploy(f, tgt_dir) and ok
+        except OSError as e:
+            say(RED, f"Error: {f}: {e}", sys.stderr)
+            ok = False
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
