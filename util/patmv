@@ -11,21 +11,19 @@ set -Eeuo pipefail # paranoid mode (terminate on errors,
 # pipe failures, unset variables)
 
 if [[ -t 2 ]]; then
-    ANSI_ERR="[31m"
-    ANSI_WARN="[93m"
-    ANSI_NOTICE="[92m"
-    ANSI_OFF="[0m"
+  ANSI_ERR="[31m"
+  ANSI_NOTICE="[92m"
+  ANSI_OFF="[0m"
 else
-    ANSI_ERR=""
-    ANSI_WARN=""
-    ANSI_NOTICE=""
-    ANSI_OFF=""
+  ANSI_ERR=""
+  ANSI_NOTICE=""
+  ANSI_OFF=""
 fi
 
-readonly ANSI_ERR ANSI_WARN ANSI_NOTICE ANSI_OFF
+readonly ANSI_ERR ANSI_NOTICE ANSI_OFF
 
 usage() {
-    echo "
+  echo "
     Usage:  ${PROG}  [options]  <pattern>  <replacement>  <file(s)>
 
 ${PROG} replaces patterns in filenames for all files specified.
@@ -44,23 +42,13 @@ ${PROG} supports the following options:
 }
 
 error() {
-    # shellcheck disable=SC2068
-    echo -e "${ANSI_ERR}${PROG}: ERROR:" $@ "${ANSI_OFF}" >&2
+  # shellcheck disable=SC2068
+  echo -e "${ANSI_ERR}${PROG}: ERROR:" $@ "${ANSI_OFF}" >&2
 }
 
 fatal() {
-    error "$@"
-    exit 1
-}
-
-warning() {
-    # shellcheck disable=SC2068,SC2317
-    echo -e "${ANSI_WARN}${PROG}: WARNING:" $@ "${ANSI_OFF}" >&2
-}
-
-notice() {
-    # shellcheck disable=SC2068,SC2317
-    echo -e "${ANSI_NOTICE}${PROG}: NOTICE:" $@ "${ANSI_OFF}" >&2
+  error "$@"
+  exit 1
 }
 
 # parse options
@@ -69,33 +57,33 @@ FORCE_MODE=""
 PROMPT_FLAG=""
 
 while getopts ":fhiV" opt; do
-    case $opt in
+  case $opt in
     f)
-        FORCE_MODE=1
-        ;;
+      FORCE_MODE=1
+      ;;
 
     h)
-        usage
-        exit 0
-        ;;
+      usage
+      exit 0
+      ;;
 
     i)
-        PROMPT_FLAG="-i"
-        ;;
+      PROMPT_FLAG="-i"
+      ;;
 
     V)
-        echo "${PROG} version ${PROG_VERSION}"
-        exit 0
-        ;;
+      echo "${PROG} version ${PROG_VERSION}"
+      exit 0
+      ;;
 
     :)
-        fatal "option '-${OPTARG}' requires an argument"
-        ;;
+      fatal "option '-${OPTARG}' requires an argument"
+      ;;
 
     \?)
-        fatal "unknown option: '-${OPTARG}'"
-        ;;
-    esac
+      fatal "unknown option: '-${OPTARG}'"
+      ;;
+  esac
 done
 
 readonly FORCE_MODE PROMPT_FLAG
@@ -103,8 +91,8 @@ readonly FORCE_MODE PROMPT_FLAG
 shift $((OPTIND - 1))
 
 if [[ $# -lt 3 ]]; then
-    usage
-    exit 1
+  usage
+  exit 1
 fi
 
 readonly sedexpr="s/$1/$2/g"
@@ -113,21 +101,21 @@ shift 2
 rc=0
 
 for file in "$@"; do
-    if [ ! -e "$file" ]; then
-        error "no such file: '$file'"
-        rc=1
-        continue
-    fi
+  if [ ! -e "$file" ]; then
+    error "no such file: '$file'"
+    rc=1
+    continue
+  fi
 
-    newfile=$(echo "$file" | sed "$sedexpr")
+  newfile=$(echo "$file" | sed "$sedexpr")
 
-    if [ "$file" != "$newfile" ]; then
-        if [[ -z $FORCE_MODE ]]; then
-            echo -e "Will move:\n        $file\n     -> ${ANSI_NOTICE}$newfile${ANSI_OFF}\n"
-        else
-            mv $PROMPT_FLAG -- "$file" "$newfile" || rc=1
-        fi
+  if [ "$file" != "$newfile" ]; then
+    if [[ -z $FORCE_MODE ]]; then
+      echo -e "Will move:\n        $file\n     -> ${ANSI_NOTICE}$newfile${ANSI_OFF}\n"
+    else
+      mv $PROMPT_FLAG -- "$file" "$newfile" || rc=1
     fi
+  fi
 done
 
 exit $rc
